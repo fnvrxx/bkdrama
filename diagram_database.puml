@@ -1,0 +1,88 @@
+@startuml Shema database Bkdrama
+
+class roles <<table>> {
+  + **id**: INT <<PK, AUTO_INCREMENT>>
+  --
+  + name: VARCHAR(50) <<NOT NULL, UNIQUE>>
+  ' + created_at: TIMESTAMP <<DEFAULT CURRENT_TIMESTAMP>>
+  ==
+  Values: 'user', 'admin', 'superadmin'
+}
+class users <<table>> {
+    + **id**: INT <<PK, AUTO_INCREMENT>>
+    --
+    + username: VARCHAR(50) <<NOT NULL, UNIQUE>>
+    + password: VARCHAR(255) <<NOT NULL>>
+    + role_id: INT <<FK to roles.id, NOT NULL>>
+}
+
+class users_history <<table>> {
+  + **id**: INT <<PK, AUTO_INCREMENT>>
+  --
+  + user_id: INT <<FK to users.id, NOT NULL>>
+  + eps_id: INT <<FK to episodes.id, NOT NULL>>
+  + id_favorit: INT <<FK to users_favorites.id, NULLABLE>>
+}
+
+class users_favorites <<table>>{
+  + **id**: INT <<PK, AUTO_INCREMENT>>
+  --
+  + user_id: INT <<FK to users.id, NOT NULL>>
+  + fav_eps: INT <<FK to drama.id, NOT NULL>>
+}
+
+class drama <<table>> {
+  + **id**: INT <<PK, AUTO_INCREMENT>>
+  --
+  + title: VARCHAR(255) <<NOT NULL>>
+  + deskripsi: TEXT <<NOT NULL>>
+  + rilis_tahun: YEAR <<NOT NULL>>
+  + genre: VARCHAR(100) <<NOT NULL>>
+  + total_eps : INT <<NOT NULL>>
+  + rating: DECIMAL(2,1) <<NOT NULL>>
+  + trailer: VARCHAR(255) <<NULLABLE>>
+}
+
+class episodes <<table>> {
+  + **id**: INT <<PK, AUTO_INCREMENT>>
+  --
+  + id_drama: INT <<FK to drama.id, NOT NULL>>
+  + eps_number: INT <<NOT NULL>>
+  + eps_title: VARCHAR(255) <<NOT NULL>>
+  + eps_url: VARCHAR(255) <<NOT NULL>> 
+  + deskripsi : TEXT <<NULLABLE>>
+  + durasi : INT <<NOT NULL>> 
+  + link_video : VARCHAR(255) <<NOT NULL>>
+}
+
+class favorit <<table>>{
+  + **id**: INT <<PK, AUTO_INCREMENT>>
+  --
+  + user_id: INT <<FK to users.id, NOT NULL>>
+  + drama_id: INT <<FK to drama.id, NOT NULL>>
+}
+
+class drama <<table>> {
+  + **id**: INT <<PK, AUTO_INCREMENT>>
+  --
+  + title: VARCHAR(255) <<NOT NULL>>
+  + deskripsi: TEXT <<NOT NULL>>
+  + rilis_tahun: YEAR <<NOT NULL>>
+  + genre: VARCHAR(100) <<NOT NULL>>
+  + total_eps : INT <<NOT NULL>>
+  + rating: DECIMAL(2,1) <<NOT NULL>>
+  + trailer: VARCHAR(255) <<NULLABLE>>
+}
+' Relations
+users "1" *-- "1" roles : role_id -> id
+users_history "many" *-- "1" users : user_id -> id
+users_history "many" *-- "many" favorit : id_favorit -> id
+users_history "many" *-- "many" episodes : eps_id -> id
+episodes "1" *-- "1" drama : id_drama -> id
+users_favorites "many" *-- "1" users : user_id -> id
+' Deskripsi
+' + link_video : VARCHAR(255) <<NOT NULL>> 'URL video lewat folder assets/videos/
+' + eps_url: VARCHAR(255) <<NOT NULL>> 'URL video episode
+' + trailer: VARCHAR(255) <<NULLABLE>> 'URL trailer
+
+@enduml
