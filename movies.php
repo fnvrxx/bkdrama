@@ -280,6 +280,115 @@ $favorited = $fav_stmt->fetchAll(PDO::FETCH_COLUMN);
             color: #000;
         }
 
+        .btn-trailer {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.3s;
+        }
+
+        .btn-trailer:hover {
+            transform: scale(1.1);
+        }
+
+        /* Trailer Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            position: relative;
+            width: 90%;
+            max-width: 900px;
+            background: #1a1a1a;
+            border-radius: 10px;
+            overflow: hidden;
+            animation: slideUp 0.3s;
+        }
+
+        .modal-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .modal-close {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .modal-video {
+            width: 100%;
+            background: #000;
+        }
+
+        .modal-video video {
+            width: 100%;
+            max-height: 500px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
         .no-results {
             text-align: center;
             padding: 60px 20px;
@@ -338,7 +447,15 @@ $favorited = $fav_stmt->fetchAll(PDO::FETCH_COLUMN);
             <div class="drama-grid">
                 <?php foreach ($dramas as $drama): ?>
                     <div class="drama-card">
-                        <div class="drama-thumbnail">🎬</div>
+                        <div class="drama-thumbnail">
+                            <?php if (!empty($drama['thumbnail']) && file_exists($drama['thumbnail'])): ?>
+                                <img src="<?php echo htmlspecialchars($drama['thumbnail']); ?>"
+                                    alt="<?php echo htmlspecialchars($drama['title']); ?>"
+                                    style="width: 100%; height: 100%; object-fit: cover;">
+                            <?php else: ?>
+                                🎬
+                            <?php endif; ?>
+                        </div>
                         <div class="drama-info">
                             <div class="drama-title"><?php echo htmlspecialchars($drama['title']); ?></div>
                             <div class="drama-meta">
@@ -350,7 +467,7 @@ $favorited = $fav_stmt->fetchAll(PDO::FETCH_COLUMN);
                                 <?php echo htmlspecialchars($drama['deskripsi']); ?>
                             </div>
                             <div class="drama-actions">
-                                <a href="watch.php?drama=<?php echo $drama['id']; ?>" class="btn-view">
+                                <a href="watchlist.php?id=<?php echo $drama['id']; ?>" class="btn-view">
                                     👁️ Lihat
                                 </a>
                                 <button
@@ -358,6 +475,13 @@ $favorited = $fav_stmt->fetchAll(PDO::FETCH_COLUMN);
                                     onclick="toggleFavorite(<?php echo $drama['id']; ?>, this)">
                                     <?php echo in_array($drama['id'], $favorited) ? '⭐' : '☆'; ?>
                                 </button>
+                                <?php if (!empty($drama['trailer']) && file_exists($drama['trailer'])): ?>
+                                    <button class="btn-trailer"
+                                        onclick="showTrailer(<?php echo $drama['id']; ?>, '<?php echo addslashes($drama['title']); ?>', '<?php echo addslashes($drama['trailer']); ?>')"
+                                        title="Tonton Trailer">
+                                        🎬
+                                    </button>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
@@ -371,7 +495,63 @@ $favorited = $fav_stmt->fetchAll(PDO::FETCH_COLUMN);
         <?php endif; ?>
     </div>
 
+    <!-- Trailer Modal -->
+    <div id="trailerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="trailerTitle">🎬 Trailer</h2>
+                <button class="modal-close" onclick="closeTrailerModal()">×</button>
+            </div>
+            <div class="modal-video">
+                <video id="trailerVideo" controls preload="metadata">
+                    <source id="trailerSource" src="" type="video/mp4">
+                    Browser Anda tidak mendukung video player.
+                </video>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Trailer Modal Functions
+        function showTrailer(dramaId, title, trailerPath) {
+            const modal = document.getElementById('trailerModal');
+            const video = document.getElementById('trailerVideo');
+            const source = document.getElementById('trailerSource');
+            const titleEl = document.getElementById('trailerTitle');
+
+            titleEl.textContent = '🎬 Trailer: ' + title;
+            source.src = trailerPath;
+            video.load();
+
+            modal.classList.add('active');
+            video.play();
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeTrailerModal() {
+            const modal = document.getElementById('trailerModal');
+            const video = document.getElementById('trailerVideo');
+
+            modal.classList.remove('active');
+            video.pause();
+            video.currentTime = 0;
+            document.body.style.overflow = 'auto';
+        }
+
+        // Close when clicking outside
+        document.getElementById('trailerModal')?.addEventListener('click', function (e) {
+            if (e.target === this) {
+                closeTrailerModal();
+            }
+        });
+
+        // Close with Escape key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                closeTrailerModal();
+            }
+        });
+
         function toggleFavorite(dramaId, button) {
             const isCurrentlyFavorited = button.classList.contains('favorited');
             const action = isCurrentlyFavorited ? 'remove' : 'add';

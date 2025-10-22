@@ -227,7 +227,7 @@ $episodes = $episodes_stmt->fetchAll();
 
 <body>
     <div class="navbar">
-        <h1>📺 Kelola Episode</h1>
+        <h1>Kelola Episode</h1>
         <div class="nav-links">
             <a href="manage-movies.php">← Kembali ke Drama</a>
             <a href="index.php">Dashboard</a>
@@ -265,10 +265,10 @@ $episodes = $episodes_stmt->fetchAll();
         <div class="drama-info">
             <h3><?php echo htmlspecialchars($drama['title']); ?></h3>
             <div class="drama-meta">
-                <span>🎭 <?php echo htmlspecialchars($drama['genre']); ?></span> |
-                <span>📅 <?php echo $drama['rilis_tahun']; ?></span> |
-                <span>⭐ <?php echo $drama['rating']; ?></span> |
-                <span>📺 <?php echo count($episodes); ?> Episode</span>
+                <span>Genre: <?php echo htmlspecialchars($drama['genre']); ?></span> |
+                <span>Rilis: <?php echo $drama['rilis_tahun']; ?></span> |
+                <span>rating: <?php echo $drama['rating']; ?></span> |
+                <span>Episode: <?php echo count($episodes); ?> Episode</span>
             </div>
         </div>
 
@@ -298,12 +298,12 @@ $episodes = $episodes_stmt->fetchAll();
                                 <td>
                                     <div class="actions">
                                         <a href="../watch.php?episode=<?php echo $episode['id']; ?>" class="btn btn-success"
-                                            target="_blank">👁️</a>
+                                            target="_blank">Preview</a>
                                         <a href="edit-episode.php?id=<?php echo $episode['id']; ?>"
-                                            class="btn btn-warning">✏️</a>
+                                            class="btn btn-warning">Edit</a>
                                         <button
                                             onclick="confirmDelete(<?php echo $episode['id']; ?>, <?php echo $episode['eps_number']; ?>)"
-                                            class="btn btn-danger">🗑️</button>
+                                            class="btn btn-danger">Delete</button>
                                     </div>
                                 </td>
                             </tr>

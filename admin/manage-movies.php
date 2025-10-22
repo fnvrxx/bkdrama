@@ -309,7 +309,6 @@ $genres = $genre_stmt->fetchAll(PDO::FETCH_COLUMN);
                             <th>Tahun</th>
                             <th>Rating</th>
                             <th>Episodes</th>
-                            <th>Dibuat Oleh</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
@@ -322,18 +321,18 @@ $genres = $genre_stmt->fetchAll(PDO::FETCH_COLUMN);
                                 <td><?php echo $drama['rilis_tahun']; ?></td>
                                 <td>⭐ <?php echo $drama['rating']; ?></td>
                                 <td><?php echo $drama['episode_count']; ?> eps</td>
-                                <td><?php echo htmlspecialchars($drama['creator_name']); ?></td>
+
                                 <td>
                                     <div class="actions">
-                                        <a href="../watch.php?drama=<?php echo $drama['id']; ?>" class="btn btn-primary"
-                                            target="_blank" title="Preview">👁️</a>
+                                        <a href="../watchlist.php?id=<?php echo $drama['id']; ?>" class="btn btn-primary"
+                                            target="_blank" title="Preview">Preview</a>
                                         <a href="manage-episodes.php?drama_id=<?php echo $drama['id']; ?>"
-                                            class="btn btn-primary" title="Kelola Episode">📺</a>
-                                        <a href="edit-movie.php?id=<?php echo $drama['id']; ?>" class="btn btn-warning"
-                                            title="Edit Drama">✏️</a>
+                                            class="btn btn-primary" title="Kelola Episode">Add Episode</a>
+                                        <a href="edit-movies.php?id=<?php echo $drama['id']; ?>" class="btn btn-warning"
+                                            title="Edit Drama">Edit Drama</a>
                                         <button
                                             onclick="confirmDelete(<?php echo $drama['id']; ?>, '<?php echo htmlspecialchars($drama['title']); ?>')"
-                                            class="btn btn-danger" title="Hapus Drama">🗑️</button>
+                                            class="btn btn-danger" title="Hapus Drama">Delete</button>
                                     </div>
                                 </td>
                             </tr>
@@ -342,7 +341,7 @@ $genres = $genre_stmt->fetchAll(PDO::FETCH_COLUMN);
                 </table>
             <?php else: ?>
                 <div class="no-data">
-                    <p>😔 Tidak ada drama ditemukan</p>
+                    <p>Tidak ada drama ditemukan</p>
                 </div>
             <?php endif; ?>
         </div>
@@ -351,7 +350,7 @@ $genres = $genre_stmt->fetchAll(PDO::FETCH_COLUMN);
     <script>
         function confirmDelete(id, title) {
             if (confirm(`Hapus drama "${title}"?\n\nSemua episode dan data terkait akan ikut terhapus!`)) {
-                window.location.href = `delete-movie.php?id=${id}`;
+                window.location.href = `delete-movies.php?id=${id}`;
             }
         }
     </script>

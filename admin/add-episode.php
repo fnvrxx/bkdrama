@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../includes/auth.php';
+require_once '../includes/upload.php';
 
 requireRole(['admin', 'superadmin']);
 
@@ -33,50 +34,79 @@ $next_ep_result = $next_ep_stmt->fetch();
 $next_episode_number = ($next_ep_result['max_eps'] ?? 0) + 1;
 
 $error = '';
+$uploadError = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $eps_number = intval($_POST['eps_number'] ?? 0);
     $eps_title = sanitizeInput($_POST['eps_title'] ?? '');
     $deskripsi = sanitizeInput($_POST['deskripsi'] ?? '');
     $durasi = intval($_POST['durasi'] ?? 0);
-    $link_video = sanitizeInput($_POST['link_video'] ?? '');
-    $thumbnail = sanitizeInput($_POST['thumbnail'] ?? '');
 
-    // Validasi
-    if (empty($eps_title) || $eps_number <= 0 || $durasi <= 0 || empty($link_video)) {
-        $error = "Episode number, judul, durasi, dan link video harus diisi!";
+    // Validasi basic
+    if (empty($eps_title) || $eps_number <= 0 || $durasi <= 0) {
+        $error = "Episode number, judul, dan durasi harus diisi!";
+    }
+    // Validasi: Video harus diupload
+    elseif (!isset($_FILES['video_file']) || $_FILES['video_file']['error'] === UPLOAD_ERR_NO_FILE) {
+        $error = "File video harus diupload!";
     } else {
         try {
-            // Cek duplicate episode number
-            $check_query = "SELECT id FROM episodes WHERE id_drama = ? AND eps_number = ?";
-            $check_stmt = $db->prepare($check_query);
-            $check_stmt->execute([$drama_id, $eps_number]);
+            // Upload video
+            $videoUpload = uploadVideo($_FILES['video_file'], '../uploads/videos');
 
-            if ($check_stmt->rowCount() > 0) {
-                $error = "Episode number {$eps_number} sudah ada!";
+            if (!$videoUpload['success']) {
+                $error = "Error upload video: " . $videoUpload['message'];
             } else {
-                $insert_query = "INSERT INTO episodes (id_drama, eps_number, eps_title, deskripsi, durasi, link_video, thumbnail)
-                                VALUES (:id_drama, :eps_number, :eps_title, :deskripsi, :durasi, :link_video, :thumbnail)";
+                $link_video = 'uploads/videos/' . $videoUpload['filename'];
 
-                $insert_stmt = $db->prepare($insert_query);
-                $insert_stmt->bindParam(':id_drama', $drama_id);
-                $insert_stmt->bindParam(':eps_number', $eps_number);
-                $insert_stmt->bindParam(':eps_title', $eps_title);
-                $insert_stmt->bindParam(':deskripsi', $deskripsi);
-                $insert_stmt->bindParam(':durasi', $durasi);
-                $insert_stmt->bindParam(':link_video', $link_video);
-                $insert_stmt->bindParam(':thumbnail', $thumbnail);
+                // Upload thumbnail (optional)
+                $thumbnail = '';
+                if (isset($_FILES['thumbnail_file']) && $_FILES['thumbnail_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $thumbUpload = uploadImage($_FILES['thumbnail_file'], '../uploads/thumbnails');
+                    if ($thumbUpload['success']) {
+                        $thumbnail = 'uploads/thumbnails/' . $thumbUpload['filename'];
+                    }
+                }
 
-                if ($insert_stmt->execute()) {
-                    // Update total_eps di tabel drama
-                    $update_drama = "UPDATE drama SET total_eps = (SELECT COUNT(*) FROM episodes WHERE id_drama = ?) WHERE id = ?";
-                    $update_stmt = $db->prepare($update_drama);
-                    $update_stmt->execute([$drama_id, $drama_id]);
+                // Cek duplicate episode number
+                $check_query = "SELECT id FROM episodes WHERE id_drama = ? AND eps_number = ?";
+                $check_stmt = $db->prepare($check_query);
+                $check_stmt->execute([$drama_id, $eps_number]);
 
-                    header("Location: manage-episodes.php?drama_id={$drama_id}&success=added");
-                    exit();
+                if ($check_stmt->rowCount() > 0) {
+                    $error = "Episode number {$eps_number} sudah ada!";
+                    // Delete uploaded files
+                    deleteFile('../' . $link_video);
+                    if ($thumbnail)
+                        deleteFile('../' . $thumbnail);
                 } else {
-                    $error = "Gagal menambahkan episode!";
+                    $insert_query = "INSERT INTO episodes (id_drama, eps_number, eps_title, deskripsi, durasi, link_video, thumbnail)
+                                    VALUES (:id_drama, :eps_number, :eps_title, :deskripsi, :durasi, :link_video, :thumbnail)";
+
+                    $insert_stmt = $db->prepare($insert_query);
+                    $insert_stmt->bindParam(':id_drama', $drama_id);
+                    $insert_stmt->bindParam(':eps_number', $eps_number);
+                    $insert_stmt->bindParam(':eps_title', $eps_title);
+                    $insert_stmt->bindParam(':deskripsi', $deskripsi);
+                    $insert_stmt->bindParam(':durasi', $durasi);
+                    $insert_stmt->bindParam(':link_video', $link_video);
+                    $insert_stmt->bindParam(':thumbnail', $thumbnail);
+
+                    if ($insert_stmt->execute()) {
+                        // Update total_eps di tabel drama
+                        $update_drama = "UPDATE drama SET total_eps = (SELECT COUNT(*) FROM episodes WHERE id_drama = ?) WHERE id = ?";
+                        $update_stmt = $db->prepare($update_drama);
+                        $update_stmt->execute([$drama_id, $drama_id]);
+
+                        header("Location: manage-episodes.php?drama_id={$drama_id}&success=added");
+                        exit();
+                    } else {
+                        $error = "Gagal menambahkan episode!";
+                        // Delete uploaded files
+                        deleteFile('../' . $link_video);
+                        if ($thumbnail)
+                            deleteFile('../' . $thumbnail);
+                    }
                 }
             }
         } catch (PDOException $e) {
@@ -298,7 +328,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="form-container">
-            <form method="POST" action="">
+            <form method="POST" action="" enctype="multipart/form-data">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="eps_number">Episode Number *</label>
@@ -326,16 +356,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="form-group">
-                    <label for="link_video">Link Video *</label>
-                    <input type="text" id="link_video" name="link_video" required
-                        placeholder="videos/drama_ep1.mp4 atau https://youtube.com/...">
-                    <small>Path file video atau URL streaming</small>
+                    <label for="video_file">Upload Video Episode * 🎬</label>
+                    <input type="file" id="video_file" name="video_file" required accept="video/*"
+                        onchange="showFileName(this, 'video-name')">
+                    <small>Maksimal 500MB - Format: MP4, WebM, OGG, AVI, MKV, MOV</small>
+                    <div id="video-name" style="margin-top: 8px; color: #667eea; font-size: 13px;"></div>
                 </div>
 
                 <div class="form-group">
-                    <label for="thumbnail">Thumbnail URL</label>
-                    <input type="text" id="thumbnail" name="thumbnail" placeholder="thumbnails/drama_ep1.jpg">
-                    <small>Opsional - thumbnail preview episode</small>
+                    <label for="thumbnail_file">Upload Thumbnail (Optional) 🖼️</label>
+                    <input type="file" id="thumbnail_file" name="thumbnail_file" accept="image/*"
+                        onchange="showFileName(this, 'thumb-name'); previewImage(this, 'thumb-preview')">
+                    <small>Maksimal 5MB - Format: JPG, PNG, WebP, GIF</small>
+                    <div id="thumb-name" style="margin-top: 8px; color: #667eea; font-size: 13px;"></div>
+                    <img id="thumb-preview"
+                        style="max-width: 200px; margin-top: 10px; display: none; border-radius: 5px; border: 2px solid #667eea;">
                 </div>
 
                 <div class="form-actions">
@@ -346,6 +381,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         </div>
     </div>
+
+    <script>
+        function showFileName(input, targetId) {
+            const target = document.getElementById(targetId);
+            if (input.files && input.files[0]) {
+                const fileSize = (input.files[0].size / 1048576).toFixed(2); // MB
+                target.textContent = `📁 ${input.files[0].name} (${fileSize} MB)`;
+            }
+        }
+
+        function previewImage(input, imgId) {
+            const img = document.getElementById(imgId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
 </body>
 
 </html>

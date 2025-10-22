@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../includes/auth.php';
+require_once '../includes/upload.php';
 
 requireRole(['admin', 'superadmin']);
 
@@ -16,7 +17,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $genre = sanitizeInput($_POST['genre'] ?? '');
     $rilis_tahun = intval($_POST['rilis_tahun'] ?? date('Y'));
     $rating = floatval($_POST['rating'] ?? 0);
-    $trailer = sanitizeInput($_POST['trailer'] ?? '');
     $created_by = getUserId();
 
     // Validasi
@@ -26,8 +26,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Rating harus antara 0-10!";
     } else {
         try {
-            $query = "INSERT INTO drama (title, deskripsi, genre, rilis_tahun, rating, trailer, created_by)
-                     VALUES (:title, :deskripsi, :genre, :rilis_tahun, :rating, :trailer, :created_by)";
+            // Upload poster (optional)
+            $thumbnail = '';
+            if (isset($_FILES['poster_file']) && $_FILES['poster_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+                $posterUpload = uploadImage($_FILES['poster_file'], '../uploads/posters');
+                if ($posterUpload['success']) {
+                    $thumbnail = 'uploads/posters/' . $posterUpload['filename'];
+                }
+            }
+
+            // Upload trailer (optional)
+            $trailer = '';
+            if (isset($_FILES['trailer_file']) && $_FILES['trailer_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+                $trailerUpload = uploadVideo($_FILES['trailer_file'], '../uploads/trailers');
+                if ($trailerUpload['success']) {
+                    $trailer = 'uploads/trailers/' . $trailerUpload['filename'];
+                }
+            }
+
+            $query = "INSERT INTO drama (title, deskripsi, genre, rilis_tahun, rating, thumbnail, trailer, created_by)
+                     VALUES (:title, :deskripsi, :genre, :rilis_tahun, :rating, :thumbnail, :trailer, :created_by)";
 
             $stmt = $db->prepare($query);
             $stmt->bindParam(':title', $title);
@@ -35,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->bindParam(':genre', $genre);
             $stmt->bindParam(':rilis_tahun', $rilis_tahun);
             $stmt->bindParam(':rating', $rating);
+            $stmt->bindParam(':thumbnail', $thumbnail);
             $stmt->bindParam(':trailer', $trailer);
             $stmt->bindParam(':created_by', $created_by);
 
@@ -43,6 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit();
             } else {
                 $error = "Gagal menambahkan drama!";
+                // Delete uploaded files if insert fails
+                if ($thumbnail)
+                    deleteFile('../' . $thumbnail);
+                if ($trailer)
+                    deleteFile('../' . $trailer);
             }
         } catch (PDOException $e) {
             $error = "Database error: " . $e->getMessage();
@@ -252,7 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <div class="form-container">
-            <form method="POST" action="">
+            <form method="POST" action="" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="title">Judul Drama *</label>
                     <input type="text" id="title" name="title" required
@@ -290,10 +314,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="form-group">
-                    <label for="trailer">URL Trailer (Optional)</label>
-                    <input type="text" id="trailer" name="trailer"
-                        value="<?php echo htmlspecialchars($trailer ?? ''); ?>" placeholder="https://youtube.com/...">
-                    <small>Link YouTube atau video trailer lainnya</small>
+                    <label for="poster_file">Upload Poster Drama (Optional) 🖼️</label>
+                    <input type="file" id="poster_file" name="poster_file" accept="image/*"
+                        onchange="showFileName(this, 'poster-name'); previewImage(this, 'poster-preview')">
+                    <small>Maksimal 5MB - Format: JPG, PNG, WebP, GIF</small>
+                    <div id="poster-name" style="margin-top: 8px; color: #667eea; font-size: 13px;"></div>
+                    <img id="poster-preview"
+                        style="max-width: 200px; margin-top: 10px; display: none; border-radius: 5px; border: 2px solid #667eea;">
+                </div>
+
+                <div class="form-group">
+                    <label for="trailer_file">Upload Video Trailer (Optional) 🎬</label>
+                    <input type="file" id="trailer_file" name="trailer_file" accept="video/*"
+                        onchange="showFileName(this, 'trailer-name')">
+                    <small>Maksimal 500MB - Format: MP4, WebM, MOV</small>
+                    <div id="trailer-name" style="margin-top: 8px; color: #667eea; font-size: 13px;"></div>
                 </div>
 
                 <div class="form-actions">
@@ -303,6 +338,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         </div>
     </div>
+
+    <script>
+        function showFileName(input, targetId) {
+            const target = document.getElementById(targetId);
+            if (input.files && input.files[0]) {
+                const fileSize = (input.files[0].size / 1048576).toFixed(2); // MB
+                target.textContent = `📁 ${input.files[0].name} (${fileSize} MB)`;
+            }
+        }
+
+        function previewImage(input, imgId) {
+            const img = document.getElementById(imgId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
 </body>
 
 </html>

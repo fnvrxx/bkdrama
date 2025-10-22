@@ -17,11 +17,12 @@ Options -Indexes
     Deny from all
 </FilesMatch>
 
-# PHP Settings
-php_value upload_max_filesize 50M
-php_value post_max_size 50M
-php_value max_execution_time 300
-php_value max_input_time 300
+# PHP Settings for Upload
+php_value upload_max_filesize 500M
+php_value post_max_size 500M
+php_value max_execution_time 600
+php_value max_input_time 600
+php_value memory_limit 512M
 
 # Error handling (set to Off in production)
 php_flag display_errors Off

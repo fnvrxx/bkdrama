@@ -51,14 +51,17 @@ if (isset($_GET['registered'])) {
     $success = "Registrasi berhasil! Silakan login.";
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - BKDrama</title>
+    <title>Login - Selamat Datang!</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Just+Me+Again+Down+Here&family=Poppins:wght@300;400;500;600;700&display=swap');
+
         * {
             margin: 0;
             padding: 0;
@@ -66,178 +69,218 @@ if (isset($_GET['registered'])) {
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Poppins', sans-serif;
             min-height: 100vh;
             display: flex;
-            justify-content: center;
             align-items: center;
-            padding: 20px;
+            justify-content: center;
+            background-color: #fef3c7;
         }
 
-        .login-container {
+        .container {
             background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
             width: 100%;
-            max-width: 400px;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: row;
         }
 
-        .logo {
-            text-align: center;
-            margin-bottom: 30px;
+        .image-section {
+            width: 50%;
+            background-color: #e5e7eb;
         }
 
-        .logo h1 {
-            color: #667eea;
-            font-size: 32px;
-            margin-bottom: 5px;
-        }
-
-        .logo p {
-            color: #666;
-            font-size: 14px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 500;
-        }
-
-        .form-group input {
+        .image-section img {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-            transition: border 0.3s;
+            height: 100%;
+            object-fit: cover;
         }
 
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
+        .form-section {
+            width: 50%;
+            padding: 3rem 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
-        .btn {
-            width: 100%;
-            padding: 12px;
-            background: #667eea;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.3s;
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+            font-family: 'Just Me Again Down Here', cursive;
+            font-size: 5rem;
         }
 
-        .btn:hover {
-            background: #5568d3;
+        .subtitle {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 1.5rem;
         }
 
         .alert {
-            padding: 12px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            font-size: 14px;
+            padding: 0.75rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
         }
 
         .alert-error {
-            background: #fee;
-            color: #c33;
-            border: 1px solid #fcc;
+            background-color: #fee2e2;
+            color: #991b1b;
         }
 
         .alert-success {
-            background: #efe;
-            color: #3c3;
-            border: 1px solid #cfc;
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #374151;
+            margin-bottom: 0.25rem;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 0.625rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: #000;
+            color: white;
+            padding: 0.625rem;
+            border: none;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-submit:hover {
+            background-color: #1f2937;
         }
 
         .register-link {
+            margin-top: 1.5rem;
             text-align: center;
-            margin-top: 20px;
-            color: #666;
+            font-size: 0.875rem;
+            color: #6b7280;
         }
 
         .register-link a {
-            color: #667eea;
+            color: #2563eb;
             text-decoration: none;
-            font-weight: 600;
+            font-weight: 500;
         }
 
         .register-link a:hover {
             text-decoration: underline;
         }
 
-        .demo-accounts {
-            margin-top: 20px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 5px;
-            font-size: 12px;
-        }
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            body {
+                background-color: white;
+                padding: 0;
+            }
 
-        .demo-accounts h4 {
-            margin-bottom: 10px;
-            color: #333;
-        }
+            .container {
+                max-width: 100%;
+                flex-direction: column;
+                border-radius: 0;
+                box-shadow: none;
+            }
 
-        .demo-accounts p {
-            margin: 5px 0;
-            color: #666;
+            .image-section {
+                display: none;
+            }
+
+            .form-section {
+                width: 100%;
+                padding: 2rem 1.5rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
         }
     </style>
 </head>
 
 <body>
-    <div class="login-container">
-        <div class="logo">
-            <h1>🎬 BKDrama</h1>
-            <p>Korean Drama Streaming Platform</p>
+
+    <!-- Container Utama -->
+    <div class="container">
+
+        <!-- Gambar Kiri (Desktop only) -->
+        <div class="image-section">
+            <img src="./assets/login/bg-login.png" alt="Poster Drama Korea">
         </div>
 
-        <?php if ($error): ?>
-            <div class="alert alert-error"><?php echo $error; ?></div>
-        <?php endif; ?>
+        <!-- Form Login -->
+        <div class="form-section">
+            <h1>Selamat Datang!</h1>
+            <p class="subtitle">Silahkan Login</p>
 
-        <?php if ($success): ?>
-            <div class="alert alert-success"><?php echo $success; ?></div>
-        <?php endif; ?>
+            <?php if (!empty($error)): ?>
+                <div class="alert alert-error">
+                    <?= htmlspecialchars($error) ?>
+                </div>
+            <?php endif; ?>
 
-        <form method="POST" action="">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username" required
-                    value="<?php echo htmlspecialchars($username ?? ''); ?>">
-            </div>
+            <?php if (!empty($success)): ?>
+                <div class="alert alert-success">
+                    <?= htmlspecialchars($success) ?>
+                </div>
+            <?php endif; ?>
 
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password" required>
-            </div>
+            <form method="POST">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Masukkan username"
+                        value="<?= htmlspecialchars($_POST['username'] ?? '') ?>" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Masukkan password" required>
+                </div>
+                <button type="submit" class="btn-submit">
+                    Login
+                </button>
+            </form>
 
-            <button type="submit" class="btn">Login</button>
-        </form>
-
-        <div class="register-link">
-            Belum punya akun? <a href="register.php">Daftar di sini</a>
+            <p class="register-link">
+                Belum punya akun? Silahkan <a href="./register.php">daftar di sini</a>
+            </p>
         </div>
 
-        <div class="demo-accounts">
-            <h4>🔑 Demo Accounts:</h4>
-            <p><strong>SuperAdmin:</strong> superadmin / admin123</p>
-            <p><strong>Admin:</strong> admin / admin123</p>
-            <p><strong>User:</strong> user / admin123</p>
-        </div>
     </div>
+
 </body>
 
 </html>

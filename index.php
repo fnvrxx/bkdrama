@@ -14,7 +14,7 @@ if (isLoggedIn()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movie Streaming - Home</title>
+    <title>BkDrama - Home</title>
     <style>
         * {
             margin: 0;
@@ -150,31 +150,14 @@ if (isLoggedIn()) {
 <body>
     <div class="hero">
         <span class="emoji">🎬</span>
-        <h1>Selamat Datang di Movie Streaming</h1>
-        <p class="subtitle">Tonton film favorit Anda kapan saja, di mana saja</p>
+        <h1>BAGIAN FARICA</h1>
+        <p class="subtitle">Hayolooo</p>
 
         <div class="buttons">
             <a href="login.php" class="btn btn-primary">Masuk</a>
             <a href="register.php" class="btn btn-secondary">Daftar Gratis</a>
         </div>
 
-        <div class="features">
-            <div class="feature">
-                <div class="feature-icon">🎥</div>
-                <h3>Koleksi Film</h3>
-                <p>Ribuan film dari berbagai genre siap ditonton</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">⭐</div>
-                <h3>Daftar Favorit</h3>
-                <p>Simpan film favorit Anda untuk ditonton nanti</p>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">📱</div>
-                <h3>Multi Device</h3>
-                <p>Akses dari komputer, tablet, atau smartphone</p>
-            </div>
-        </div>
     </div>
 </body>
 

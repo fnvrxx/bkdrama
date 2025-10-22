@@ -1,0 +1,37 @@
+# Security for uploads folder
+
+# Prevent PHP execution in uploads
+<FilesMatch "\.php$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+# Allow only specific file types
+<FilesMatch "\.(jpg|jpeg|png|gif|webp|mp4|webm|ogg|avi|mkv|mov)$">
+    Order Allow,Deny
+    Allow from all
+</FilesMatch>
+
+# Prevent directory browsing
+Options -Indexes
+
+# Enable CORS for video files (if needed)
+<IfModule mod_headers.c>
+    <FilesMatch "\.(mp4|webm|ogg)$">
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+</IfModule>
+
+# Set correct MIME types
+<IfModule mod_mime.c>
+    AddType video/mp4 .mp4
+    AddType video/webm .webm
+    AddType video/ogg .ogg
+    AddType video/x-msvideo .avi
+    AddType video/x-matroska .mkv
+    AddType video/quicktime .mov
+    AddType image/jpeg .jpg .jpeg
+    AddType image/png .png
+    AddType image/gif .gif
+    AddType image/webp .webp
+</IfModule>

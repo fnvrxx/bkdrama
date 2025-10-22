@@ -46,7 +46,13 @@ $recent_dramas = $recent_drama_stmt->fetchAll();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - BKDrama</title>
+    <?php if (hasRole(['admin'])): ?>
+        <title>Admin Panel - BKDrama</title>
+    <?php endif; ?>
+    <?php if (hasRole(['superadmin'])): ?>
+        <title>superadmin Panel - BKDrama</title>
+    <?php endif; ?>
+    <!-- <title>Admin Panel - BKDrama</title> -->
     <style>
         * {
             margin: 0;
@@ -254,7 +260,12 @@ $recent_dramas = $recent_drama_stmt->fetchAll();
 
     <div class="container">
         <div class="page-header">
-            <h2>Dashboard Admin</h2>
+            <?php if (hasRole(['admin'])): ?>
+                <h2>Dashboard Admin</h2>
+            <?php endif; ?>
+            <?php if (hasRole(['superadmin'])): ?>
+                <h2>Dashboard SuperAdmin</h2>
+            <?php endif; ?>
             <p>Selamat datang, <?php echo getUsername(); ?> (<?php echo strtoupper(getRole()); ?>)</p>
         </div>
 

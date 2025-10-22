@@ -276,7 +276,6 @@ $roles = $roles_stmt->fetchAll();
                         <th>Role Saat Ini</th>
                         <th>Ubah Role</th>
                         <th>Terdaftar</th>
-                        <th>Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -314,9 +313,6 @@ $roles = $roles_stmt->fetchAll();
                             <?php endif; ?>
                         </td>
                         <td><?php echo date('d M Y', strtotime($user['created_at'])); ?></td>
-                        <td>
-                            <a href="../watch.php" class="btn btn-primary" target="_blank">👁️ View</a>
-                        </td>
                     </tr>
                     <?php endforeach; ?>
                 </tbody>

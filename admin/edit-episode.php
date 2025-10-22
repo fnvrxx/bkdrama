@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../includes/auth.php';
+require_once '../includes/upload.php';
 
 requireRole(['admin', 'superadmin']);
 
@@ -35,14 +36,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $eps_title = sanitizeInput($_POST['eps_title'] ?? '');
     $deskripsi = sanitizeInput($_POST['deskripsi'] ?? '');
     $durasi = intval($_POST['durasi'] ?? 0);
-    $link_video = sanitizeInput($_POST['link_video'] ?? '');
-    $thumbnail = sanitizeInput($_POST['thumbnail'] ?? '');
+
+    // Keep old values
+    $link_video = $episode['link_video'];
+    $thumbnail = $episode['thumbnail'];
 
     // Validasi
-    if (empty($eps_title) || $eps_number <= 0 || $durasi <= 0 || empty($link_video)) {
-        $error = "Episode number, judul, durasi, dan link video harus diisi!";
+    if (empty($eps_title) || $eps_number <= 0 || $durasi <= 0) {
+        $error = "Episode number, judul, dan durasi harus diisi!";
     } else {
         try {
+            // Upload new video if provided
+            if (isset($_FILES['video_file']) && $_FILES['video_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+                $videoUpload = uploadVideo($_FILES['video_file'], '../uploads/videos');
+
+                if ($videoUpload['success']) {
+                    // Delete old video
+                    if ($link_video)
+                        deleteFile('../' . $link_video);
+                    // Set new video
+                    $link_video = 'uploads/videos/' . $videoUpload['filename'];
+                }
+            }
+
+            // Upload new thumbnail if provided
+            if (isset($_FILES['thumbnail_file']) && $_FILES['thumbnail_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+                $thumbUpload = uploadImage($_FILES['thumbnail_file'], '../uploads/thumbnails');
+
+                if ($thumbUpload['success']) {
+                    // Delete old thumbnail
+                    if ($thumbnail)
+                        deleteFile('../' . $thumbnail);
+                    // Set new thumbnail
+                    $thumbnail = 'uploads/thumbnails/' . $thumbUpload['filename'];
+                }
+            }
+
             // Cek duplicate episode number (exclude current episode)
             $check_query = "SELECT id FROM episodes WHERE id_drama = ? AND eps_number = ? AND id != ?";
             $check_stmt = $db->prepare($check_query);
@@ -86,8 +115,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $eps_title = $episode['eps_title'];
     $deskripsi = $episode['deskripsi'];
     $durasi = $episode['durasi'];
-    $link_video = $episode['link_video'];
-    $thumbnail = $episode['thumbnail'];
 }
 ?>
 <!DOCTYPE html>

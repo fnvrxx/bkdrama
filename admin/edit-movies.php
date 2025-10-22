@@ -1,6 +1,7 @@
 <?php
 require_once '../config/database.php';
 require_once '../includes/auth.php';
+require_once '../includes/upload.php';
 
 requireRole(['admin', 'superadmin']);
 
@@ -33,7 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $genre = sanitizeInput($_POST['genre'] ?? '');
     $rilis_tahun = intval($_POST['rilis_tahun'] ?? date('Y'));
     $rating = floatval($_POST['rating'] ?? 0);
-    $trailer = sanitizeInput($_POST['trailer'] ?? '');
+
+    // Keep old values
+    $thumbnail = $drama['thumbnail'];
+    $trailer = $drama['trailer'];
 
     // Validasi
     if (empty($title) || empty($deskripsi) || empty($genre)) {
@@ -42,12 +46,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = "Rating harus antara 0-10!";
     } else {
         try {
+            // Upload new poster if provided
+            if (isset($_FILES['poster_file']) && $_FILES['poster_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+                $posterUpload = uploadImage($_FILES['poster_file'], '../uploads/posters');
+
+                if ($posterUpload['success']) {
+                    // Delete old poster
+                    if ($thumbnail)
+                        deleteFile('../' . $thumbnail);
+                    // Set new poster
+                    $thumbnail = 'uploads/posters/' . $posterUpload['filename'];
+                }
+            }
+
+            // Upload new trailer if provided
+            if (isset($_FILES['trailer_file']) && $_FILES['trailer_file']['error'] !== UPLOAD_ERR_NO_FILE) {
+                $trailerUpload = uploadVideo($_FILES['trailer_file'], '../uploads/trailers');
+
+                if ($trailerUpload['success']) {
+                    // Delete old trailer
+                    if ($trailer)
+                        deleteFile('../' . $trailer);
+                    // Set new trailer
+                    $trailer = 'uploads/trailers/' . $trailerUpload['filename'];
+                }
+            }
+
             $update_query = "UPDATE drama SET 
                             title = :title,
                             deskripsi = :deskripsi,
                             genre = :genre,
                             rilis_tahun = :rilis_tahun,
                             rating = :rating,
+                            thumbnail = :thumbnail,
                             trailer = :trailer
                             WHERE id = :id";
 
@@ -57,6 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $update_stmt->bindParam(':genre', $genre);
             $update_stmt->bindParam(':rilis_tahun', $rilis_tahun);
             $update_stmt->bindParam(':rating', $rating);
+            $update_stmt->bindParam(':thumbnail', $thumbnail);
             $update_stmt->bindParam(':trailer', $trailer);
             $update_stmt->bindParam(':id', $drama_id);
 
@@ -77,7 +109,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $genre = $drama['genre'];
     $rilis_tahun = $drama['rilis_tahun'];
     $rating = $drama['rating'];
-    $trailer = $drama['trailer'];
 }
 ?>
 <!DOCTYPE html>
@@ -253,6 +284,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border: 1px solid #f5c6cb;
         }
 
+        .current-file {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .current-file img,
+        .current-file video {
+            max-width: 200px;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: 2px solid #ddd;
+        }
+
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -282,7 +330,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <div class="form-container">
-            <form method="POST" action="">
+            <form method="POST" action="" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="title">Judul Drama *</label>
                     <input type="text" id="title" name="title" required value="<?php echo htmlspecialchars($title); ?>">
@@ -319,10 +367,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="form-group">
-                    <label for="trailer">URL Trailer (Optional)</label>
-                    <input type="text" id="trailer" name="trailer" value="<?php echo htmlspecialchars($trailer); ?>"
-                        placeholder="https://youtube.com/...">
-                    <small>Link YouTube atau video trailer lainnya</small>
+                    <label for="poster_file">Upload Poster Baru (Optional) 🖼️</label>
+                    <input type="file" id="poster_file" name="poster_file" accept="image/*"
+                        onchange="showFileName(this, 'poster-name'); previewImage(this, 'poster-preview')">
+                    <small>Kosongkan jika tidak ingin mengganti poster. Max 5MB</small>
+                    <div id="poster-name" style="margin-top: 8px; color: #667eea; font-size: 13px;"></div>
+
+                    <?php if (!empty($drama['thumbnail']) && file_exists('../' . $drama['thumbnail'])): ?>
+                        <div class="current-file">
+                            <strong>📁 Poster saat ini:</strong><br>
+                            <?php echo basename($drama['thumbnail']); ?>
+                            <img src="../<?php echo htmlspecialchars($drama['thumbnail']); ?>" alt="Current poster">
+                        </div>
+                    <?php endif; ?>
+                    <img id="poster-preview"
+                        style="max-width: 200px; margin-top: 10px; display: none; border-radius: 5px; border: 2px solid #667eea;">
+                </div>
+
+                <div class="form-group">
+                    <label for="trailer_file">Upload Video Trailer Baru (Optional) 🎬</label>
+                    <input type="file" id="trailer_file" name="trailer_file" accept="video/*"
+                        onchange="showFileName(this, 'trailer-name')">
+                    <small>Kosongkan jika tidak ingin mengganti trailer. Max 500MB</small>
+                    <div id="trailer-name" style="margin-top: 8px; color: #667eea; font-size: 13px;"></div>
+
+                    <?php if (!empty($drama['trailer']) && file_exists('../' . $drama['trailer'])): ?>
+                        <div class="current-file">
+                            <strong>🎬 Trailer saat ini:</strong><br>
+                            <?php echo basename($drama['trailer']); ?>
+                            <video controls style="max-width: 300px; margin-top: 10px;">
+                                <source src="../<?php echo htmlspecialchars($drama['trailer']); ?>" type="video/mp4">
+                            </video>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div class="form-actions">
@@ -332,6 +409,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
         </div>
     </div>
+
+    <script>
+        function showFileName(input, targetId) {
+            const target = document.getElementById(targetId);
+            if (input.files && input.files[0]) {
+                const fileSize = (input.files[0].size / 1048576).toFixed(2);
+                target.textContent = `📁 ${input.files[0].name} (${fileSize} MB)`;
+            }
+        }
+
+        function previewImage(input, imgId) {
+            const img = document.getElementById(imgId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
 </body>
 
 </html>

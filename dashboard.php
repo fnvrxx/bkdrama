@@ -31,7 +31,7 @@ $watch_stmt = $db->prepare($watch_query);
 $watch_stmt->execute([getUserId()]);
 $stats['watched_episodes'] = $watch_stmt->fetch()['total'];
 
-// Drama terbaru (limit 6)
+// Drama terbaru (limit 6) dengan trailer info
 $recent_query = "SELECT * FROM drama ORDER BY created_at DESC LIMIT 6";
 $recent_stmt = $db->query($recent_query);
 $recent_dramas = $recent_stmt->fetchAll();
@@ -407,9 +407,17 @@ $continue_watching = $continue_stmt->fetchAll();
         <?php if (count($recent_dramas) > 0): ?>
             <div class="drama-grid">
                 <?php foreach ($recent_dramas as $drama): ?>
-                    <a href="movies.php?id=<?php echo $drama['id']; ?>" style="text-decoration: none; color: inherit;">
+                    <a href="watchlist.php?id=<?php echo $drama['id']; ?>" style="text-decoration: none; color: inherit;">
                         <div class="drama-card">
-                            <div class="drama-thumbnail">🎬</div>
+                            <div class="drama-thumbnail">
+                                <?php if (!empty($drama['thumbnail']) && file_exists($drama['thumbnail'])): ?>
+                                    <img src="<?php echo htmlspecialchars($drama['thumbnail']); ?>"
+                                        alt="<?php echo htmlspecialchars($drama['title']); ?>"
+                                        style="width: 100%; height: 100%; object-fit: cover;">
+                                <?php else: ?>
+                                    🎬
+                                <?php endif; ?>
+                            </div>
                             <div class="drama-info">
                                 <div class="drama-title"><?php echo htmlspecialchars($drama['title']); ?></div>
                                 <div class="drama-meta">
