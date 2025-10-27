@@ -328,7 +328,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
 
         <div class="form-container">
-            <form method="POST" action="" enctype="multipart/form-data">
+            <form id="upload-form" method="POST" action="" enctype="multipart/form-data">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="eps_number">Episode Number *</label>
@@ -373,8 +373,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         style="max-width: 200px; margin-top: 10px; display: none; border-radius: 5px; border: 2px solid #667eea;">
                 </div>
 
+                <!-- Upload progress (hidden until upload starts) -->
+                <div id="upload-progress" style="display:none; margin-top:20px;">
+                    <div style="background:#eef2ff; border-radius:6px; padding:6px;">
+                        <div id="progress-bar"
+                            style="height:14px; width:0%; background:#667eea; border-radius:4px; transition:width 0.2s;">
+                        </div>
+                    </div>
+                    <div id="progress-text" style="margin-top:8px; font-size:13px; color:#333;">Menunggu upload...</div>
+                </div>
+
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">💾 Simpan Episode</button>
+                    <button id="submit-btn" type="submit" class="btn btn-primary">💾 Simpan Episode</button>
                     <a href="manage-episodes.php?drama_id=<?php echo $drama_id; ?>" class="btn btn-secondary">❌
                         Batal</a>
                 </div>
@@ -402,6 +412,99 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 reader.readAsDataURL(input.files[0]);
             }
         }
+
+        // Handle AJAX upload with progress bar. Falls back to normal form submit if JS disabled.
+        (function () {
+            const form = document.getElementById('upload-form');
+            if (!form) return;
+
+            const progressWrap = document.getElementById('upload-progress');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const submitBtn = document.getElementById('submit-btn');
+
+            form.addEventListener('submit', function (e) {
+                // Use AJAX to upload files so we can show progress
+                e.preventDefault();
+
+                // Basic client-side validation
+                const videoInput = document.getElementById('video_file');
+                if (!videoInput || !videoInput.files || videoInput.files.length === 0) {
+                    alert('Silakan pilih file video sebelum mengirim.');
+                    return;
+                }
+
+                // Build FormData
+                const fd = new FormData(form);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', form.action || window.location.href, true);
+
+                xhr.upload.addEventListener('progress', function (ev) {
+                    if (ev.lengthComputable) {
+                        const percent = Math.round((ev.loaded / ev.total) * 100);
+                        progressWrap.style.display = 'block';
+                        progressBar.style.width = percent + '%';
+                        progressText.textContent = `Uploading: ${percent}% (${Math.round(ev.loaded / 1048576)} / ${Math.round(ev.total / 1048576)} MB)`;
+                    }
+                });
+
+                xhr.addEventListener('load', function () {
+                    submitBtn.disabled = false;
+                    // If server redirected to manage-episodes, navigate there
+                    try {
+                        const respUrl = xhr.responseURL || '';
+                        if (respUrl.includes('manage-episodes.php')) {
+                            window.location.href = respUrl;
+                            return;
+                        }
+                    } catch (err) {
+                        // ignore
+                    }
+
+                    // If response contains known success query, redirect
+                    if (xhr.responseText && xhr.responseText.indexOf('success=added') !== -1) {
+                        // find URL in response text
+                        const match = xhr.responseText.match(/manage-episodes\.php\?[^"'<>\s]*/);
+                        if (match) {
+                            window.location.href = match[0];
+                            return;
+                        }
+                    }
+
+                    // Otherwise show server response (simple fallback)
+                    progressText.innerHTML = 'Upload selesai. Memproses...';
+                    // If server returned HTML with error message, display it in an alert
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        // Try to extract error message from returned HTML
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(xhr.responseText, 'text/html');
+                        const alertEl = doc.querySelector('.alert-danger');
+                        if (alertEl) {
+                            alert(alertEl.textContent.trim());
+                        } else {
+                            // No alert found — reload page to show server-rendered result
+                            window.location.reload();
+                        }
+                    } else {
+                        alert('Terjadi kesalahan saat mengupload. Silakan coba lagi.');
+                    }
+                });
+
+                xhr.addEventListener('error', function () {
+                    submitBtn.disabled = false;
+                    alert('Upload gagal karena kesalahan jaringan.');
+                });
+
+                // Disable button to prevent double submits
+                submitBtn.disabled = true;
+                progressWrap.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressText.textContent = 'Memulai upload...';
+
+                xhr.send(fd);
+            });
+        })();
     </script>
 </body>
 
