@@ -1,0 +1,36 @@
+# BKDrama .htaccess Configuration
+
+# Enable Rewrite Engine
+RewriteEngine On
+
+# Redirect to login if accessing root
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^$ login.php [L]
+
+# Prevent directory browsing
+Options -Indexes
+
+# Protect sensitive files
+<FilesMatch "(^\.htaccess|^\.env|\.sql$|\.log$)">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# PHP Settings for Upload
+php_value upload_max_filesize 500M
+php_value post_max_size 500M
+php_value max_execution_time 600
+php_value max_input_time 600
+php_value memory_limit 512M
+
+# Error handling (set to Off in production)
+php_flag display_errors Off
+php_flag log_errors On
+
+# Security Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set X-XSS-Protection "1; mode=block"
+</IfModule>
