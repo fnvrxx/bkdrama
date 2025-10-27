@@ -250,6 +250,11 @@ $recent_dramas = $recent_drama_stmt->fetchAll();
         <h1>🎬 BKDrama Admin</h1>
         <div class="nav-links">
             <a href="../dashboard.php">← Kembali ke Site</a>
+            <?php if (hasRole(['superadmin'])): ?>
+                <a href="reset-database.php">RESET DATABASE</a>
+                <a href="check-database.php">CHECK DATABASE</a>
+                <a href="debug-upload.php">DEBUG DATABASE</a>
+            <?php endif; ?>
             <a href="../logout.php">Logout</a>
         </div>
     </div>
