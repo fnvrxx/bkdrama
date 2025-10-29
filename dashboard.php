@@ -37,7 +37,16 @@ $recent_stmt = $db->query($recent_query);
 $recent_dramas = $recent_stmt->fetchAll();
 
 // Continue watching (drama yang sedang ditonton)
-$continue_query = "SELECT d.*, e.eps_number, e.eps_title, h.progress, h.last_watched
+// FIX: Ambil eps_id dan thumbnail dari drama
+$continue_query = "SELECT 
+                    d.id as drama_id,
+                    d.title as drama_title,
+                    d.thumbnail as drama_thumbnail,
+                    e.id as eps_id,
+                    e.eps_number,
+                    e.eps_title,
+                    h.progress,
+                    h.last_watched
                    FROM users_history h
                    JOIN episodes e ON h.eps_id = e.id
                    JOIN drama d ON e.id_drama = d.id
@@ -218,6 +227,14 @@ $continue_watching = $continue_stmt->fetchAll();
             justify-content: center;
             font-size: 60px;
             color: rgba(255, 255, 255, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .drama-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .drama-info {
@@ -248,6 +265,7 @@ $continue_watching = $continue_stmt->fetchAll();
             display: flex;
             gap: 15px;
             transition: background 0.3s;
+            position: relative;
         }
 
         .continue-card:hover {
@@ -255,8 +273,8 @@ $continue_watching = $continue_stmt->fetchAll();
         }
 
         .continue-thumbnail {
-            width: 120px;
-            height: 80px;
+            width: 160px;
+            height: 100px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 5px;
             display: flex;
@@ -264,6 +282,36 @@ $continue_watching = $continue_stmt->fetchAll();
             justify-content: center;
             font-size: 30px;
             flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .continue-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .continue-thumbnail .play-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: rgba(102, 126, 234, 0.9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .continue-card:hover .play-overlay {
+            opacity: 1;
         }
 
         .continue-info {
@@ -273,6 +321,7 @@ $continue_watching = $continue_stmt->fetchAll();
         .continue-title {
             font-weight: 600;
             margin-bottom: 5px;
+            font-size: 18px;
         }
 
         .continue-episode {
@@ -281,12 +330,19 @@ $continue_watching = $continue_stmt->fetchAll();
             margin-bottom: 8px;
         }
 
+        .continue-progress-text {
+            font-size: 12px;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
         .progress-bar {
             width: 100%;
             height: 4px;
             background: #333;
             border-radius: 2px;
             overflow: hidden;
+            margin-bottom: 10px;
         }
 
         .progress-fill {
@@ -317,6 +373,11 @@ $continue_watching = $continue_stmt->fetchAll();
             color: #666;
         }
 
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
         @media (max-width: 768px) {
             .navbar {
                 flex-direction: column;
@@ -331,6 +392,15 @@ $continue_watching = $continue_stmt->fetchAll();
             .drama-grid {
                 grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             }
+
+            .continue-card {
+                flex-direction: column;
+            }
+
+            .continue-thumbnail {
+                width: 100%;
+                height: 180px;
+            }
         }
     </style>
 </head>
@@ -342,11 +412,8 @@ $continue_watching = $continue_stmt->fetchAll();
             <a href="dashboard.php">Dashboard</a>
             <a href="movies.php">Drama</a>
             <a href="favorites.php">Favorit</a>
-            <?php if (hasRole(['admin'])): ?>
+            <?php if (hasRole(['admin', 'superadmin'])): ?>
                 <a href="admin/">Admin Panel</a>
-            <?php endif; ?>
-            <?php if (hasRole(['superadmin'])): ?>
-                <a href="admin/">SuperAdmin Panel</a>
             <?php endif; ?>
             <div class="user-info">
                 <span class="role-badge role-<?php echo getRole(); ?>">
@@ -373,39 +440,58 @@ $continue_watching = $continue_stmt->fetchAll();
                 <h3><?php echo $stats['my_favorites']; ?></h3>
                 <p>Drama Favorit Saya</p>
             </div>
-            <!-- <div class="stat-card">
+            <div class="stat-card">
                 <h3><?php echo $stats['watched_episodes']; ?></h3>
                 <p>Episode Ditonton</p>
-            </div> -->
+            </div>
         </div>
 
+        <!-- Continue Watching Section -->
         <?php if (count($continue_watching) > 0): ?>
             <div class="section-title">
-                <h3>Lanjutkan Menonton</h3>
+                <h3>📺 Lanjutkan Menonton</h3>
+                <a href="continue-watching.php">Lihat Semua →</a>
             </div>
             <?php foreach ($continue_watching as $item): ?>
                 <div class="continue-card">
-                    <div class="continue-thumbnail">🎬</div>
+                    <div class="continue-thumbnail">
+                        <?php if (!empty($item['drama_thumbnail']) && file_exists($item['drama_thumbnail'])): ?>
+                            <img src="<?php echo htmlspecialchars($item['drama_thumbnail']); ?>"
+                                alt="<?php echo htmlspecialchars($item['drama_title']); ?>">
+                        <?php else: ?>
+                            🎬
+                        <?php endif; ?>
+                        <div class="play-overlay">▶</div>
+                    </div>
                     <div class="continue-info">
-                        <div class="continue-title"><?php echo htmlspecialchars($item['title']); ?></div>
+                        <div class="continue-title"><?php echo htmlspecialchars($item['drama_title']); ?></div>
                         <div class="continue-episode">
                             Episode <?php echo $item['eps_number']; ?>: <?php echo htmlspecialchars($item['eps_title']); ?>
                         </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: <?php echo ($item['progress'] / 3600) * 100; ?>%"></div>
+                        <div class="continue-progress-text">
+                            Progress: <?php echo gmdate("i:s", $item['progress']); ?>
                         </div>
-                        <a href="watch.php?episode=<?php echo $item['eps_id']; ?>" class="btn" style="margin-top: 10px;">
-                            Lanjutkan
+                        <div class="progress-bar">
+                            <?php
+                            // Assume average episode is 60 minutes (3600 seconds)
+                            $estimated_duration = 3600;
+                            $progress_percent = min(100, ($item['progress'] / $estimated_duration) * 100);
+                            ?>
+                            <div class="progress-fill" style="width: <?php echo $progress_percent; ?>%"></div>
+                        </div>
+                        <a href="watch-episode.php?id=<?php echo $item['eps_id']; ?>" class="btn">
+                            ▶ Lanjutkan
                         </a>
                     </div>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
 
-        <!-- <div class="section-title">
-            <h3>Drama Terbaru</h3>
+        <!-- Recent Dramas Section -->
+        <div class="section-title">
+            <h3>🎬 Drama Terbaru</h3>
             <a href="movies.php">Lihat Semua →</a>
-        </div> -->
+        </div>
 
         <?php if (count($recent_dramas) > 0): ?>
             <div class="drama-grid">
@@ -415,8 +501,7 @@ $continue_watching = $continue_stmt->fetchAll();
                             <div class="drama-thumbnail">
                                 <?php if (!empty($drama['thumbnail']) && file_exists($drama['thumbnail'])): ?>
                                     <img src="<?php echo htmlspecialchars($drama['thumbnail']); ?>"
-                                        alt="<?php echo htmlspecialchars($drama['title']); ?>"
-                                        style="width: 100%; height: 100%; object-fit: cover;">
+                                        alt="<?php echo htmlspecialchars($drama['title']); ?>">
                                 <?php else: ?>
                                     🎬
                                 <?php endif; ?>
@@ -424,8 +509,8 @@ $continue_watching = $continue_stmt->fetchAll();
                             <div class="drama-info">
                                 <div class="drama-title"><?php echo htmlspecialchars($drama['title']); ?></div>
                                 <div class="drama-meta">
-                                    <span>rating: <?php echo $drama['rating']; ?></span>
-                                    <span>rilis tahun: <?php echo $drama['rilis_tahun']; ?></span>
+                                    <span>⭐ <?php echo $drama['rating']; ?></span>
+                                    <span>📅 <?php echo $drama['rilis_tahun']; ?></span>
                                 </div>
                             </div>
                         </div>
@@ -434,6 +519,7 @@ $continue_watching = $continue_stmt->fetchAll();
             </div>
         <?php else: ?>
             <div class="empty-state">
+                <div class="empty-state-icon">🎬</div>
                 <p>Belum ada drama tersedia</p>
             </div>
         <?php endif; ?>

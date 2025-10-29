@@ -451,7 +451,7 @@ $episodes = $episodes_stmt->fetchAll();
 
                     <?php if (count($episodes) > 0): ?>
                         <?php foreach ($episodes as $episode): ?>
-                            <a href="watch.php?episode=<?php echo $episode['id']; ?>" class="episode-item">
+                            <a href="watch-episode.php?id=<?php echo $episode['id']; ?>" class="episode-item">
                                 <div class="episode-thumbnail">
                                     <?php if (!empty($episode['thumbnail']) && file_exists($episode['thumbnail'])): ?>
                                         <img src="<?php echo htmlspecialchars($episode['thumbnail']); ?>"

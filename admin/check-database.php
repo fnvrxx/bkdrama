@@ -2,12 +2,21 @@
 /**
  * CHECK DATABASE STRUCTURE
  * Verify tabel episodes dan drama punya kolom yang benar
+ * Check users_history table directly
  */
+
+// header('Content-Type: application/json');
 
 require_once '../config/database.php';
 require_once '../includes/auth.php';
 
+// if (!isLoggedIn()) {
+//     echo json_encode(['success' => false, 'message' => 'Not logged in']);
+//     exit;
+// }
+
 requireRole(['admin', 'superadmin']);
+
 
 $database = new Database();
 $db = $database->getConnection();
@@ -30,6 +39,40 @@ $sample_episodes = $sample_stmt->fetchAll();
 $drama_sample_query = "SELECT id, title, thumbnail, trailer FROM drama LIMIT 3";
 $drama_sample_stmt = $db->query($drama_sample_query);
 $sample_dramas = $drama_sample_stmt->fetchAll();
+
+// try {
+//     // Check table structure
+//     $structure_query = "DESCRIBE users_history";
+//     $structure_stmt = $db->query($structure_query);
+//     $structure = $structure_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+//     // Get user's watch history
+//     $history_query = "SELECT * FROM users_history WHERE user_id = ? ORDER BY updated_at DESC LIMIT 10";
+//     $history_stmt = $db->prepare($history_query);
+//     $history_stmt->execute([$user_id]);
+//     $history = $history_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+//     // Count total records
+//     $count_query = "SELECT COUNT(*) as total FROM users_history WHERE user_id = ?";
+//     $count_stmt = $db->prepare($count_query);
+//     $count_stmt->execute([$user_id]);
+//     $count = $count_stmt->fetch(PDO::FETCH_ASSOC);
+
+//     echo json_encode([
+//         'success' => true,
+//         'user_id' => $user_id,
+//         'table_structure' => $structure,
+//         'total_records' => $count['total'],
+//         'recent_history' => $history
+//     ]);
+
+// } catch (PDOException $e) {
+//     echo json_encode([
+//         'success' => false,
+//         'message' => 'Database error: ' . $e->getMessage()
+//     ]);
+// }
+
 ?>
 <!DOCTYPE html>
 <html lang="id">
