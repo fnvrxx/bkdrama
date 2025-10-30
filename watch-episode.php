@@ -300,7 +300,7 @@ $all_episodes = $episodes_stmt->fetchAll(PDO::FETCH_ASSOC);
                 <span id="duration">00:00</span>
             </div>
 
-            <!-- Debug Info (hapus setelah testing) -->
+            <!-- Debug Info (hapus setelah testing)
             <div class="debug-info">
                 <strong>Debug Info:</strong><br>
                 Video URL: <?php echo htmlspecialchars($episode['video_url'] ?? 'EMPTY'); ?><br>
@@ -308,7 +308,7 @@ $all_episodes = $episodes_stmt->fetchAll(PDO::FETCH_ASSOC);
                 Drama ID: <?php echo $episode['id_drama']; ?><br>
                 Start Time: <?php echo $start_time; ?> seconds<br>
                 <span id="videoStatus">Checking video...</span>
-            </div>
+            </div> -->
         </div>
     </div>
 

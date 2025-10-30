@@ -9,7 +9,7 @@ $db = $database->getConnection();
 $user_id = getUserId();
 
 // Get continue watching list
-$query = "SELECT 
+$query = "SELECT
             uh.drama_id,
             uh.episode_id,
             uh.watched_duration,
@@ -19,7 +19,6 @@ $query = "SELECT
             d.title as drama_title,
             d.thumbnail as drama_thumbnail,
             d.genre,
-            d.rating,
             e.judul as episode_title,
             e.episode_number
           FROM users_history uh
@@ -278,7 +277,7 @@ $continue_watching = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <div class="container">
         <div class="page-header">
-            <h2>📺 Lanjutkan Menonton</h2>
+            <h2>Lanjutkan Menonton</h2>
             <p>Drama yang sedang kamu tonton</p>
         </div>
 

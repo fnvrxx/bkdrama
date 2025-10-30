@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $deskripsi = sanitizeInput($_POST['deskripsi'] ?? '');
     $genre = sanitizeInput($_POST['genre'] ?? '');
     $rilis_tahun = intval($_POST['rilis_tahun'] ?? date('Y'));
-    $rating = floatval($_POST['rating'] ?? 0);
+    // Rating tidak lagi diubah dari admin, diisi oleh user
 
     // Keep old values
     $thumbnail = $drama['thumbnail'];
@@ -42,8 +42,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validasi
     if (empty($title) || empty($deskripsi) || empty($genre)) {
         $error = "Judul, deskripsi, dan genre harus diisi!";
-    } elseif ($rating < 0 || $rating > 10) {
-        $error = "Rating harus antara 0-10!";
     } else {
         try {
             // Upload new poster if provided
@@ -72,12 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
 
-            $update_query = "UPDATE drama SET 
+            $update_query = "UPDATE drama SET
                             title = :title,
                             deskripsi = :deskripsi,
                             genre = :genre,
                             rilis_tahun = :rilis_tahun,
-                            rating = :rating,
                             thumbnail = :thumbnail,
                             trailer = :trailer
                             WHERE id = :id";
@@ -87,7 +84,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $update_stmt->bindParam(':deskripsi', $deskripsi);
             $update_stmt->bindParam(':genre', $genre);
             $update_stmt->bindParam(':rilis_tahun', $rilis_tahun);
-            $update_stmt->bindParam(':rating', $rating);
             $update_stmt->bindParam(':thumbnail', $thumbnail);
             $update_stmt->bindParam(':trailer', $trailer);
             $update_stmt->bindParam(':id', $drama_id);
@@ -108,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $deskripsi = $drama['deskripsi'];
     $genre = $drama['genre'];
     $rilis_tahun = $drama['rilis_tahun'];
-    $rating = $drama['rating'];
+    // Rating tidak ditampilkan di form, diisi oleh user
 }
 ?>
 <!DOCTYPE html>
@@ -359,12 +355,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="rating">Rating (0-10)</label>
-                    <input type="number" id="rating" name="rating" step="0.1" min="0" max="10"
-                        value="<?php echo htmlspecialchars($rating); ?>">
-                    <small>Rating dari 0.0 sampai 10.0</small>
-                </div>
+                <!-- Rating dihapus - akan diisi oleh user melalui sistem rating -->
 
                 <div class="form-group">
                     <label for="poster_file">Upload Poster Baru (Optional) 🖼️</label>

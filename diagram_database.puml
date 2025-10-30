@@ -1,34 +1,31 @@
-@startuml Shema database Bkdrama
+@startuml Schema Database BKDrama
+
+' ============= DATABASE INFO =============
+' Database Name: new_film
+' DBMS: MySQL/MariaDB
+' Updated: 2025-10-31
+' ✅ Kolom rating sudah dihapus dari drama & episodes
+' ============= ============= =============
+
+' ============= TABLES =============
 
 class roles <<table>> {
   + **id**: INT <<PK, AUTO_INCREMENT>>
   --
   + name: VARCHAR(50) <<NOT NULL, UNIQUE>>
-  ' + created_at: TIMESTAMP <<DEFAULT CURRENT_TIMESTAMP>>
+  + created_at: TIMESTAMP <<DEFAULT CURRENT_TIMESTAMP>>
   ==
-  Values: 'user', 'admin', 'superadmin'
+  **Values:** 'user', 'admin', 'superadmin'
 }
+
 class users <<table>> {
-    + **id**: INT <<PK, AUTO_INCREMENT>>
-    --
-    + username: VARCHAR(50) <<NOT NULL, UNIQUE>>
-    + password: VARCHAR(255) <<NOT NULL>>
-    + role_id: INT <<FK to roles.id, NOT NULL>>
-}
-
-class users_history <<table>> {
   + **id**: INT <<PK, AUTO_INCREMENT>>
   --
-  + user_id: INT <<FK to users.id, NOT NULL>>
-  + eps_id: INT <<FK to episodes.id, NOT NULL>>
-  + id_favorit: INT <<FK to users_favorites.id, NULLABLE>>
-}
-
-class users_favorites <<table>>{
-  + **id**: INT <<PK, AUTO_INCREMENT>>
-  --
-  + user_id: INT <<FK to users.id, NOT NULL>>
-  + fav_eps: INT <<FK to drama.id, NOT NULL>>
+  + username: VARCHAR(50) <<NOT NULL, UNIQUE>>
+  + email: VARCHAR(255) <<NOT NULL, UNIQUE>>
+  + password: VARCHAR(255) <<NOT NULL>>
+  + role_id: INT <<NOT NULL>>
+  + created_at: TIMESTAMP <<DEFAULT CURRENT_TIMESTAMP>>
 }
 
 class drama <<table>> {
@@ -38,51 +35,203 @@ class drama <<table>> {
   + deskripsi: TEXT <<NOT NULL>>
   + rilis_tahun: YEAR <<NOT NULL>>
   + genre: VARCHAR(100) <<NOT NULL>>
-  + total_eps : INT <<NOT NULL>>
-  + rating: DECIMAL(2,1) <<NOT NULL>>
+  + total_eps: INT <<DEFAULT 0>>
+  + thumbnail: VARCHAR(255) <<NULLABLE>>
   + trailer: VARCHAR(255) <<NULLABLE>>
+  + created_by: INT <<NULLABLE>>
+  + created_at: TIMESTAMP <<DEFAULT CURRENT_TIMESTAMP>>
+  ==
+  **Notes:**
+  • total_eps auto-update via query
+  • Rating dihitung dari tabel ratings
 }
 
 class episodes <<table>> {
   + **id**: INT <<PK, AUTO_INCREMENT>>
   --
-  + id_drama: INT <<FK to drama.id, NOT NULL>>
+  + id_drama: INT <<NOT NULL>>
   + eps_number: INT <<NOT NULL>>
   + eps_title: VARCHAR(255) <<NOT NULL>>
-  + eps_url: VARCHAR(255) <<NOT NULL>> 
-  + deskripsi : TEXT <<NULLABLE>>
-  + durasi : INT <<NOT NULL>> 
-  + link_video : VARCHAR(255) <<NOT NULL>>
+  + deskripsi: TEXT <<NULLABLE>>
+  + durasi: INT <<NOT NULL>> ' durasi dalam menit
+  + link_video: VARCHAR(255) <<NOT NULL>>
+  + thumbnail: VARCHAR(255) <<NULLABLE>>
+  + created_at: TIMESTAMP <<DEFAULT CURRENT_TIMESTAMP>>
+  ==
+  **Unique Constraint:**
+  (id_drama, eps_number)
 }
 
-class favorit <<table>>{
+class ratings <<table>> {
   + **id**: INT <<PK, AUTO_INCREMENT>>
   --
-  + user_id: INT <<FK to users.id, NOT NULL>>
-  + drama_id: INT <<FK to drama.id, NOT NULL>>
+  + user_id: INT <<NOT NULL>>
+  + drama_id: INT <<NOT NULL>>
+  + rating: DECIMAL(2,1) <<NOT NULL, CHECK 0-5>>
+  + created_at: TIMESTAMP <<DEFAULT CURRENT_TIMESTAMP>>
+  + updated_at: TIMESTAMP <<ON UPDATE CURRENT_TIMESTAMP>>
+  ==
+  **Unique Constraint:**
+  (user_id, drama_id)
+  **Features:**
+  • INSERT ... ON DUPLICATE KEY UPDATE
+  • 1 user = 1 rating per drama
 }
 
-class drama <<table>> {
+class favorit <<table>> {
   + **id**: INT <<PK, AUTO_INCREMENT>>
   --
-  + title: VARCHAR(255) <<NOT NULL>>
-  + deskripsi: TEXT <<NOT NULL>>
-  + rilis_tahun: YEAR <<NOT NULL>>
-  + genre: VARCHAR(100) <<NOT NULL>>
-  + total_eps : INT <<NOT NULL>>
-  + rating: DECIMAL(2,1) <<NOT NULL>>
-  + trailer: VARCHAR(255) <<NULLABLE>>
+  + user_id: INT <<NOT NULL>>
+  + drama_id: INT <<NOT NULL>>
+  + created_at: TIMESTAMP <<DEFAULT CURRENT_TIMESTAMP>>
+  ==
+  **Unique Constraint:**
+  (user_id, drama_id)
 }
-' Relations
-users "1" *-- "1" roles : role_id -> id
-users_history "many" *-- "1" users : user_id -> id
-users_history "many" *-- "many" favorit : id_favorit -> id
-users_history "many" *-- "many" episodes : eps_id -> id
-episodes "1" *-- "1" drama : id_drama -> id
-users_favorites "many" *-- "1" users : user_id -> id
-' Deskripsi
-' + link_video : VARCHAR(255) <<NOT NULL>> 'URL video lewat folder assets/videos/
-' + eps_url: VARCHAR(255) <<NOT NULL>> 'URL video episode
-' + trailer: VARCHAR(255) <<NULLABLE>> 'URL trailer
+
+class users_history <<table>> {
+  + **id**: INT <<PK, AUTO_INCREMENT>>
+  --
+  + user_id: INT <<NOT NULL>>
+  + eps_id: INT <<NOT NULL>>
+  + progress: INT <<DEFAULT 0>> ' dalam detik
+  + completed: TINYINT(1) <<DEFAULT 0>>
+  + last_watched: TIMESTAMP <<DEFAULT CURRENT_TIMESTAMP>>
+  ==
+  **Business Rules:**
+  • completed = 1 jika progress >= 90%
+  • last_watched auto-update
+}
+
+' ============= VIEWS (Optional) =============
+
+class v_drama_ratings <<view>> {
+  + drama_id: INT
+  --
+  + avg_rating: DECIMAL(3,1)
+  + total_ratings: INT
+  ==
+  SELECT d.id as drama_id,
+    COALESCE(AVG(r.rating), 0) as avg_rating,
+    COUNT(r.id) as total_ratings
+  FROM drama d
+  LEFT JOIN ratings r ON d.id = r.drama_id
+  GROUP BY d.id
+}
+
+' ============= RELATIONSHIPS =============
+
+roles ||--o{ users : "role_id"
+users ||--o{ drama : "created_by"
+drama ||--o{ episodes : "id_drama"
+drama ||--o{ ratings : "drama_id"
+drama ||--o{ favorit : "drama_id"
+users ||--o{ ratings : "user_id"
+users ||--o{ favorit : "user_id"
+users ||--o{ users_history : "user_id"
+episodes ||--o{ users_history : "eps_id"
+drama ||--|| v_drama_ratings : "drama_id"
+
+' ============= DETAILED NOTES =============
+
+note top of roles
+  **Master Data - Roles**
+  3 level akses:
+  1. user - User biasa
+  2. admin - Manage drama & episodes
+  3. superadmin - Full access + manage users
+end note
+
+note top of users
+  **User Authentication**
+  • Password: PLAIN TEXT (⚠️ SECURITY RISK!)
+  • TODO: Implement password_hash()
+  • email harus unique
+
+  **JOIN dengan roles:**
+  SELECT u.*, r.name as role_name
+  FROM users u
+  JOIN roles r ON u.role_id = r.id
+  WHERE u.username = ?
+end note
+
+note bottom of drama
+  **Drama Management**
+  ✅ Kolom rating sudah DIHAPUS
+  • total_eps updated via query
+  • Rating dihitung dari tabel ratings
+  • thumbnail & trailer optional (URLs)
+
+  **Get drama with ratings:**
+  SELECT d.*,
+    COALESCE(AVG(r.rating), 0) as avg_rating,
+    COUNT(DISTINCT r.id) as total_ratings
+  FROM drama d
+  LEFT JOIN ratings r ON d.id = r.drama_id
+  GROUP BY d.id
+end note
+
+note bottom of episodes
+  **Episode Management**
+  • eps_number: 1, 2, 3, ...
+  • durasi: dalam menit
+  • link_video: URL streaming
+  • Unique (id_drama, eps_number)
+end note
+
+note right of ratings
+  **User Rating System**
+  • Range: 0.0 - 5.0
+  • 1 user = 1 rating per drama
+  • INSERT ... ON DUPLICATE KEY UPDATE
+
+  **Average rating:**
+  SELECT AVG(rating) FROM ratings
+  WHERE drama_id = ?
+end note
+
+note right of favorit
+  **User Favorites/Watchlist**
+  • Toggle add/remove
+  • Unique per user-drama pair
+end note
+
+note bottom of users_history
+  **Watch Progress Tracking**
+  • progress: detik terakhir ditonton
+  • completed: 1 jika >= 90% selesai
+  • Untuk "Continue Watching" feature
+
+  **Continue Watching Query:**
+  SELECT e.*, d.*, h.progress
+  FROM users_history h
+  JOIN episodes e ON h.eps_id = e.id
+  JOIN drama d ON e.id_drama = d.id
+  WHERE h.user_id = ? AND h.completed = 0
+  ORDER BY h.last_watched DESC
+end note
+
+note top of v_drama_ratings
+  **View: Aggregated Ratings**
+  Optional view untuk optimasi
+  Bisa pakai LEFT JOIN + GROUP BY
+end note
+
+note as Important
+  **✅ PERUBAHAN SCHEMA (2025-10-31):**
+
+  **Kolom yang DIHAPUS:**
+  • drama.rating (DEPRECATED)
+  • episodes.rating (jika ada)
+
+  **Impact:**
+  ✅ continue-watching.php sudah diperbaiki
+  ✅ Semua file lain sudah pakai AVG(r.rating)
+
+  **Rating sekarang:**
+  • 100% dari tabel ratings (user-driven)
+  • Agregasi real-time dengan AVG()
+  • Lebih akurat & transparan
+end note
 
 @enduml

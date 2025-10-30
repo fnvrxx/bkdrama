@@ -1,19 +1,20 @@
 <?php
 /**
  * Test Watch History API
- * Upload to root and access: http://localhost/bkdrama/test-api.php
+ * Admin/Superadmin Only
+ * Access: http://localhost/Bkdrama/admin/test-api.php
  */
 
-require_once 'config/database.php';
-require_once 'includes/auth.php';
+require_once '../config/database.php';
+require_once '../includes/auth.php';
 
-if (!isLoggedIn()) {
-    die('Please login first! <a href="login.php">Login</a>');
-}
+// Require superadmin access
+requireRole(['superadmin']);
 
 $database = new Database();
 $db = $database->getConnection();
 $user_id = getUserId();
+$username = $_SESSION['username'] ?? 'Unknown';
 
 // Test data
 $test_drama_id = 1;
@@ -149,18 +150,32 @@ $test_duration = 300; // 5 minutes
             border-radius: 4px;
             width: 200px;
         }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 
 <body>
     <div class="container">
-        <h1>🧪 Test Watch History API</h1>
+        <a href="index.php" class="back-link">← Back to Admin Dashboard</a>
+        <h1>Test Watch History API</h1>
 
         <div class="info-box">
-            <strong>Current User:</strong> <?php echo getUserName() ?? 'Unknown'; ?> (ID: <?php echo $user_id; ?>)<br>
+            <strong>Current User:</strong> <?php echo $username; ?> (ID: <?php echo $user_id; ?>)<br>
+            <strong>Role:</strong> <?php echo $_SESSION['role_name'] ?? 'Unknown'; ?><br>
             <strong>Test Episode:</strong> Episode <?php echo $test_episode_id; ?> of Drama
             <?php echo $test_drama_id; ?><br>
-            <strong>API Endpoint:</strong> api/watch-history-api.php
+            <strong>API Endpoint:</strong> ../api/watch-history-api.php
         </div>
 
         <!-- Test 1: Check API -->
@@ -196,7 +211,7 @@ $test_duration = 300; // 5 minutes
                 <input type="number" id="duration" value="<?php echo $test_duration; ?>">
             </div>
 
-            <button onclick="saveProgress()">💾 Save Progress</button>
+            <button onclick="saveProgress()">Save Progress</button>
             <div id="result2" class="result" style="display:none;"></div>
         </div>
 
@@ -204,7 +219,7 @@ $test_duration = 300; // 5 minutes
         <div class="test-section">
             <h3>Test 3: Get Progress</h3>
             <p>Retrieve saved progress from database</p>
-            <button onclick="getProgress()">📊 Get Progress</button>
+            <button onclick="getProgress()">Get Progress</button>
             <div id="result3" class="result" style="display:none;"></div>
         </div>
 
@@ -237,7 +252,9 @@ $test_duration = 300; // 5 minutes
         function testAPI() {
             console.log('Testing API connection...');
 
-            fetch('api/watch-history-api.php?action=test')
+            fetch('../api/watch-history-api.php?action=test', {
+                credentials: 'include'
+            })
                 .then(response => response.json())
                 .then(data => {
                     console.log('API Test:', data);
@@ -251,23 +268,23 @@ $test_duration = 300; // 5 minutes
 
         // Test 2: Save Progress
         function saveProgress() {
-            const drama_id = document.getElementById('id_drama').value;
+            const drama_id = document.getElementById('drama_id').value;
             const episode_id = document.getElementById('episode_id').value;
             const watched = document.getElementById('watched').value;
-            const duration = document.getElementById('progress').value;
+            const duration = document.getElementById('duration').value;
 
             console.log('Saving progress:', { drama_id, episode_id, watched, duration });
 
             const formData = new FormData();
-            formData.append('action', 'save_progress');
-            formData.append('id_drama', drama_id);
+            formData.append('drama_id', drama_id);
             formData.append('episode_id', episode_id);
             formData.append('watched_duration', watched);
             formData.append('total_duration', duration);
 
-            fetch('api/watch-history-api.php', {
+            fetch('../api/watch-history-api.php?action=save_progress', {
                 method: 'POST',
-                body: formData
+                body: formData,
+                credentials: 'include'
             })
                 .then(response => response.json())
                 .then(data => {
@@ -286,7 +303,9 @@ $test_duration = 300; // 5 minutes
 
             console.log('Getting progress for episode:', episode_id);
 
-            fetch(`api/watch-history-api.php?action=get_progress&episode_id=${episode_id}`)
+            fetch(`../api/watch-history-api.php?action=get_progress&episode_id=${episode_id}`, {
+                credentials: 'include'
+            })
                 .then(response => response.json())
                 .then(data => {
                     console.log('Get progress:', data);
@@ -302,7 +321,9 @@ $test_duration = 300; // 5 minutes
         function getContinueWatching() {
             console.log('Getting continue watching list...');
 
-            fetch('api/watch-history-api.php?action=continue_watching&limit=10')
+            fetch('../api/watch-history-api.php?action=continue_watching&limit=10', {
+                credentials: 'include'
+            })
                 .then(response => response.json())
                 .then(data => {
                     console.log('Continue watching:', data);
@@ -318,7 +339,9 @@ $test_duration = 300; // 5 minutes
         function checkDatabase() {
             console.log('Checking database...');
 
-            fetch('admin/check-database.php')
+            fetch('check-database.php', {
+                credentials: 'include'
+            })
                 .then(response => response.json())
                 .then(data => {
                     console.log('Database check:', data);

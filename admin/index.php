@@ -35,8 +35,14 @@ $fav_query = "SELECT COUNT(*) as total FROM favorit";
 $fav_stmt = $db->query($fav_query);
 $stats['total_favorites'] = $fav_stmt->fetch()['total'];
 
-// Drama terbaru
-$recent_drama_query = "SELECT * FROM drama ORDER BY created_at DESC LIMIT 5";
+// Drama terbaru dengan ratings dari user
+$recent_drama_query = "SELECT d.*,
+                       COALESCE(AVG(r.rating), 0) as avg_rating,
+                       COUNT(DISTINCT r.id) as total_ratings
+                       FROM drama d
+                       LEFT JOIN ratings r ON d.id = r.drama_id
+                       GROUP BY d.id
+                       ORDER BY d.created_at DESC LIMIT 5";
 $recent_drama_stmt = $db->query($recent_drama_query);
 $recent_dramas = $recent_drama_stmt->fetchAll();
 ?>
@@ -252,8 +258,10 @@ $recent_dramas = $recent_drama_stmt->fetchAll();
             <a href="../dashboard.php">← Kembali ke Site</a>
             <?php if (hasRole(['superadmin'])): ?>
                 <a href="reset-database.php">RESET DATABASE</a>
-                <a href="check-database.php">CHECK DATABASE</a>
                 <a href="debug-upload.php">DEBUG DATABASE</a>
+                <a href="debug-path.php">DEBUG PATH</a>
+                <a href="test-api.php">TEST API</a>
+                <a href="test_conn.php">TEST Mysql</a>
             <?php endif; ?>
             <a href="../logout.php">Logout</a>
         </div>
@@ -318,7 +326,8 @@ $recent_dramas = $recent_drama_stmt->fetchAll();
                                 <td><strong><?php echo htmlspecialchars($drama['title']); ?></strong></td>
                                 <td><?php echo htmlspecialchars($drama['genre']); ?></td>
                                 <td><?php echo $drama['rilis_tahun']; ?></td>
-                                <td>⭐ <?php echo $drama['rating']; ?></td>
+                                <td>⭐ <?php echo number_format($drama['avg_rating'], 1); ?>
+                                    (<?php echo $drama['total_ratings']; ?>)</td>
                                 <td><?php echo $drama['total_eps']; ?> eps</td>
                                 <td><?php echo date('d M Y', strtotime($drama['created_at'])); ?></td>
                             </tr>

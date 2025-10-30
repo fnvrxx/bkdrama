@@ -298,7 +298,7 @@ if (isLoggedIn()) {
             <div class="flex flex-col md:flex-row justify-between items-center gap-4">
                 <div class="flex items-center space-x-6">
                     <h1 class="text-2xl font-black tracking-wider text-gradient">BK DRAMA</h1>
-                    <nav class="hidden md:flex space-x-6 text-sm font-medium">
+                    <!-- <nav class="hidden md:flex space-x-6 text-sm font-medium">
                         <a href="#" class="relative group">
                             <span class="hover:text-yellow-400 transition">Home</span>
                             <span
@@ -314,7 +314,7 @@ if (isLoggedIn()) {
                             <span
                                 class="absolute bottom-0 left-0 w-0 h-0.5 bg-yellow-400 group-hover:w-full transition-all duration-300"></span>
                         </a>
-                    </nav>
+                    </nav> -->
                 </div>
 
                 <div class="flex items-center space-x-3">
@@ -382,7 +382,7 @@ if (isLoggedIn()) {
                         kehidupan. Drama yang menyentuh hati tentang keluarga, kehilangan, dan menemukan makna dalam
                         setiap kehidupan.
                     </p>
-                    <div class="flex flex-wrap gap-4 justify-center md:justify-start">
+                    <!-- <div class="flex flex-wrap gap-4 justify-center md:justify-start">
                         <button
                             class="bg-gradient-to-r from-yellow-500 to-yellow-600 text-black px-8 py-3 rounded-lg font-bold text-sm flex items-center gap-2 btn-glow">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -399,39 +399,39 @@ if (isLoggedIn()) {
                             </svg>
                             My List
                         </button>
-                    </div>
+                    </div> -->
                 </div>
             </div>
         </div>
 
         <!-- Browse by Genre -->
-        <div class="scroll-reveal">
+        <!-- <div class="scroll-reveal">
             <h3 class="text-2xl md:text-3xl font-bold mb-6 text-center">
                 Browse by <span class="text-gradient">Genre</span>
             </h3>
             <div class="flex flex-wrap justify-center gap-4">
                 <button
-                    class="genre-btn bg-gradient-to-r from-purple-500 to-purple-600 px-8 py-3 rounded-xl font-bold text-sm shadow-lg">
+                    class=" bg-gradient-to-r from-purple-500 to-purple-600 px-8 py-3 rounded-xl font-bold text-sm shadow-lg">
                     ✨ FANTASI
                 </button>
                 <button
-                    class="genre-btn bg-gradient-to-r from-pink-500 to-rose-600 px-8 py-3 rounded-xl font-bold text-sm shadow-lg">
+                    class=" bg-gradient-to-r from-pink-500 to-rose-600 px-8 py-3 rounded-xl font-bold text-sm shadow-lg">
                     💕 ROMANCE
                 </button>
                 <button
-                    class="genre-btn bg-gradient-to-r from-red-600 to-red-700 px-8 py-3 rounded-xl font-bold text-sm shadow-lg">
+                    class=" bg-gradient-to-r from-red-600 to-red-700 px-8 py-3 rounded-xl font-bold text-sm shadow-lg">
                     👻 HOROR
                 </button>
                 <button
-                    class="genre-btn bg-gradient-to-r from-gray-700 to-gray-800 px-8 py-3 rounded-xl font-bold text-sm shadow-lg">
+                    class=" bg-gradient-to-r from-gray-700 to-gray-800 px-8 py-3 rounded-xl font-bold text-sm shadow-lg">
                     🔪 THRILLER
                 </button>
                 <button
-                    class="genre-btn bg-gradient-to-r from-yellow-500 to-yellow-600 px-8 py-3 rounded-xl font-bold text-sm shadow-lg">
+                    class=" bg-gradient-to-r from-yellow-500 to-yellow-600 px-8 py-3 rounded-xl font-bold text-sm shadow-lg">
                     😂 KOMEDI
                 </button>
             </div>
-        </div>
+        </div> -->
 
         <!-- Quick Stats -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 scroll-reveal">

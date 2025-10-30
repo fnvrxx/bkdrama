@@ -15,17 +15,25 @@ if ($drama_id <= 0) {
     exit();
 }
 
-// Get drama details
+// Get drama details with ratings
+$user_id = getUserId();
 $drama_query = "SELECT d.*, u.username as creator_name,
-                (SELECT COUNT(*) FROM favorit WHERE drama_id = d.id AND user_id = ?) as is_favorited
+                (SELECT COUNT(*) FROM favorit WHERE drama_id = d.id AND user_id = ?) as is_favorited,
+                COALESCE(AVG(r.rating), 0) as avg_rating,
+                COUNT(DISTINCT r.id) as total_ratings,
+                (SELECT rating FROM ratings WHERE drama_id = d.id AND user_id = ?) as user_rating
                 FROM drama d
                 LEFT JOIN users u ON d.created_by = u.id
-                WHERE d.id = ?";
+                LEFT JOIN ratings r ON d.id = r.drama_id
+                WHERE d.id = ?
+                GROUP BY d.id";
 $drama_stmt = $db->prepare($drama_query);
-$drama_stmt->bindParam(1, $_SESSION['user_id']);
-$drama_stmt->bindParam(2, $drama_id);
+$drama_stmt->bindParam(1, $user_id);
+$drama_stmt->bindParam(2, $user_id);
+$drama_stmt->bindParam(3, $drama_id);
 $drama_stmt->execute();
 $drama = $drama_stmt->fetch();
+
 
 if (!$drama) {
     header("Location: movies.php?error=drama_not_found");
@@ -372,7 +380,8 @@ $episodes = $episodes_stmt->fetchAll();
             <h1 class="drama-title"><?php echo htmlspecialchars($drama['title']); ?></h1>
             <div class="drama-meta">
                 <span><?php echo $drama['rilis_tahun']; ?></span>
-                <span><?php echo $drama['rating']; ?> ⭐</span>
+                <span>⭐ <?php echo number_format($drama['avg_rating'], 1); ?> (<?php echo $drama['total_ratings']; ?>
+                    rating)</span>
                 <span><?php echo count($episodes); ?> Episode</span>
             </div>
         </div>
@@ -396,12 +405,35 @@ $episodes = $episodes_stmt->fetchAll();
                 <div class="genre-rating">
                     <span class="genre">Genre : <?php echo htmlspecialchars($drama['genre']); ?></span>
                     <div class="stars">
-                        <!-- <?php
-                        $rating = round($drama['rating']);
-                        for ($i = 1; $i <= 5; $i++) {
-                            echo $i <= $rating ? '★' : '☆';
-                        }
-                        ?> -->
+                        <!-- Rating moved to rating section below -->
+                    </div>
+                </div>
+
+                <!-- Rating Section -->
+                <div
+                    style="margin-bottom: 20px; padding: 15px; background: rgba(255, 255, 255, 0.9); border-radius: 8px;">
+                    <h3
+                        style="font-family: 'Brush Script MT', cursive; color: #5c4b51; margin-bottom: 10px; font-size: 1.3rem;">
+                        Berikan Rating
+                    </h3>
+                    <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+                        <div class="rating-stars" id="ratingStars">
+                            <?php for ($i = 1; $i <= 5; $i++): ?>
+                                <span class="star" data-rating="<?php echo $i; ?>"
+                                    style="font-size: 32px; cursor: pointer; color: #ddd;">★</span>
+                            <?php endfor; ?>
+                        </div>
+                        <span id="ratingValue" style="color: #5c4b51; font-weight: bold; font-size: 18px;">
+                            <?php echo $drama['user_rating'] ? number_format($drama['user_rating'], 1) : '0.0'; ?>
+                        </span>
+                    </div>
+                    <div style="color: #888; font-size: 13px;" id="ratingMessage">
+                        <?php if ($drama['user_rating']): ?>
+                            Anda sudah memberikan rating <?php echo number_format($drama['user_rating'], 1); ?> untuk drama
+                            ini
+                        <?php else: ?>
+                            Klik bintang untuk memberikan rating
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -471,15 +503,12 @@ $episodes = $episodes_stmt->fetchAll();
                                         echo htmlspecialchars($desc);
                                         ?>
                                     </p>
-                                    <div class="episode-duration">
-                                        ⏱️ <?php echo $episode['durasi']; ?> menit
-                                    </div>
                                 </div>
                             </a>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <div class="no-episodes">
-                            <div style="font-size: 3rem; margin-bottom: 10px;">📺</div>
+                            <div style="font-size: 3rem; margin-bottom: 10px;">Oh no!</div>
                             <p>Belum ada episode tersedia untuk drama ini</p>
                         </div>
                     <?php endif; ?>
@@ -489,6 +518,76 @@ $episodes = $episodes_stmt->fetchAll();
     </div>
 
     <script>
+        // Rating stars functionality
+        const dramaId = <?php echo $drama_id; ?>;
+        const stars = document.querySelectorAll('.star');
+        const ratingValue = document.getElementById('ratingValue');
+        const ratingMessage = document.getElementById('ratingMessage');
+        let currentRating = <?php echo $drama['user_rating'] ? $drama['user_rating'] : 0; ?>;
+
+        // Initialize stars based on current rating
+        function updateStars(rating) {
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.style.color = '#ffd700';
+                } else {
+                    star.style.color = '#ddd';
+                }
+            });
+        }
+
+        // Initialize on page load
+        updateStars(Math.round(currentRating));
+
+        // Hover effect
+        stars.forEach((star, index) => {
+            star.addEventListener('mouseenter', () => {
+                updateStars(index + 1);
+            });
+
+            star.addEventListener('mouseleave', () => {
+                updateStars(Math.round(currentRating));
+            });
+
+            star.addEventListener('click', () => {
+                const rating = index + 1;
+                submitRating(rating);
+            });
+        });
+
+        function submitRating(rating) {
+            fetch('api/rate-drama.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `drama_id=${dramaId}&rating=${rating}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        currentRating = rating;
+                        ratingValue.textContent = rating.toFixed(1);
+                        ratingMessage.textContent = `Anda sudah memberikan rating ${rating.toFixed(1)} untuk drama ini`;
+                        ratingMessage.style.color = '#4CAF50';
+
+                        // Update the header meta rating
+                        const metaRating = document.querySelector('.drama-meta span:nth-child(2)');
+                        if (metaRating) {
+                            metaRating.textContent = `⭐ ${data.avg_rating} (${data.total_ratings} rating)`;
+                        }
+
+                        updateStars(rating);
+                    } else {
+                        alert(data.message || 'Terjadi kesalahan saat menyimpan rating');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Terjadi kesalahan saat menyimpan rating');
+                });
+        }
+
         function toggleFavorite(dramaId, button) {
             const isCurrentlyFavorited = button.classList.contains('favorited');
             const action = isCurrentlyFavorited ? 'remove' : 'add';

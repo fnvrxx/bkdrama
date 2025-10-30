@@ -11,11 +11,14 @@ $db = $database->getConnection();
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $genre_filter = isset($_GET['genre']) ? $_GET['genre'] : '';
 
-// Query drama
+// Query drama dengan ratings dari user
 $query = "SELECT d.*, u.username as creator_name,
-          (SELECT COUNT(*) FROM episodes WHERE id_drama = d.id) as episode_count
+          (SELECT COUNT(*) FROM episodes WHERE id_drama = d.id) as episode_count,
+          COALESCE(AVG(r.rating), 0) as avg_rating,
+          COUNT(DISTINCT r.id) as total_ratings
           FROM drama d
           LEFT JOIN users u ON d.created_by = u.id
+          LEFT JOIN ratings r ON d.id = r.drama_id
           WHERE 1=1";
 
 if (!empty($search)) {
@@ -26,7 +29,7 @@ if (!empty($genre_filter)) {
     $query .= " AND d.genre LIKE :genre";
 }
 
-$query .= " ORDER BY d.created_at DESC";
+$query .= " GROUP BY d.id ORDER BY d.created_at DESC";
 
 $stmt = $db->prepare($query);
 
@@ -258,8 +261,8 @@ $genres = $genre_stmt->fetchAll(PDO::FETCH_COLUMN);
 
     <div class="container">
         <div class="page-header">
-            <h2>📺 Kelola Drama</h2>
-            <a href="add-movies.php" class="btn btn-primary">➕ Tambah Drama Baru</a>
+            <h2>Kelola Drama</h2>
+            <a href="add-movies.php" class="btn btn-primary">Tambah Drama Baru</a>
         </div>
 
         <?php if (isset($_GET['success'])): ?>
@@ -277,7 +280,7 @@ $genres = $genre_stmt->fetchAll(PDO::FETCH_COLUMN);
 
         <?php if (isset($_GET['error'])): ?>
             <div class="alert alert-danger">
-                ❌ Terjadi kesalahan! Silakan coba lagi.
+                Terjadi kesalahan! Silakan coba lagi.
             </div>
         <?php endif; ?>
 
@@ -303,7 +306,6 @@ $genres = $genre_stmt->fetchAll(PDO::FETCH_COLUMN);
                 <table>
                     <thead>
                         <tr>
-                            <th>ID</th>
                             <th>Judul</th>
                             <th>Genre</th>
                             <th>Tahun</th>
@@ -315,11 +317,11 @@ $genres = $genre_stmt->fetchAll(PDO::FETCH_COLUMN);
                     <tbody>
                         <?php foreach ($dramas as $drama): ?>
                             <tr>
-                                <td><?php echo $drama['id']; ?></td>
                                 <td><strong><?php echo htmlspecialchars($drama['title']); ?></strong></td>
                                 <td><?php echo htmlspecialchars($drama['genre']); ?></td>
                                 <td><?php echo $drama['rilis_tahun']; ?></td>
-                                <td>⭐ <?php echo $drama['rating']; ?></td>
+                                <td>⭐ <?php echo number_format($drama['avg_rating'], 1); ?>
+                                    (<?php echo $drama['total_ratings']; ?>)</td>
                                 <td><?php echo $drama['episode_count']; ?> eps</td>
 
                                 <td>

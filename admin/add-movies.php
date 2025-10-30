@@ -16,17 +16,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
     $deskripsi = sanitizeInput($_POST['deskripsi'] ?? '');
     $genre = sanitizeInput($_POST['genre'] ?? '');
     $rilis_tahun = intval($_POST['rilis_tahun'] ?? date('Y'));
-    $rating = floatval($_POST['rating'] ?? 0);
+    $rating = 0; // Default rating 0, akan diisi oleh user
     $created_by = getUserId();
 
     // Validasi
     if (empty($title) || empty($deskripsi) || empty($genre)) {
         echo json_encode(['success' => false, 'message' => 'Judul, deskripsi, dan genre harus diisi!']);
-        exit;
-    }
-
-    if ($rating < 0 || $rating > 10) {
-        echo json_encode(['success' => false, 'message' => 'Rating harus antara 0-10!']);
         exit;
     }
 
@@ -371,7 +366,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
 
 <body>
     <div class="navbar">
-        <h1>🎬 Tambah Drama</h1>
+        <h1>Tambah Drama</h1>
         <div class="nav-links">
             <a href="manage-movies.php">← Kembali</a>
             <a href="index.php">Dashboard</a>
@@ -381,7 +376,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
 
     <div class="container">
         <div class="page-header">
-            <h2>➕ Tambah Drama Baru</h2>
+            <h2>Tambah Drama Baru</h2>
             <p>Isi form di bawah untuk menambahkan drama baru</p>
         </div>
 
@@ -448,14 +443,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="rating">Rating (0-10)</label>
-                    <input type="number" id="rating" name="rating" step="0.1" min="0" max="10" value="0">
-                    <small>Rating dari 0.0 sampai 10.0</small>
-                </div>
+                <!-- Rating dihapus - akan diisi oleh user melalui sistem rating -->
 
                 <div class="form-group">
-                    <label for="poster_file">Upload Poster Drama (Optional) 🖼️</label>
+                    <label for="poster_file">Upload Poster Drama (Optional) </label>
                     <input type="file" id="poster_file" name="poster_file" accept="image/*"
                         onchange="showFileName(this, 'poster-name'); previewImage(this, 'poster-preview')">
                     <small>Maksimal 5MB - Format: JPG, PNG, WebP, GIF</small>
@@ -465,7 +456,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
                 </div>
 
                 <div class="form-group">
-                    <label for="trailer_file">Upload Video Trailer (Optional) 🎬</label>
+                    <label for="trailer_file">Upload Video Trailer (Optional) </label>
                     <input type="file" id="trailer_file" name="trailer_file" accept="video/*"
                         onchange="showFileName(this, 'trailer-name')">
                     <small>Maksimal 500MB - Format: MP4, WebM, MOV</small>
@@ -473,8 +464,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" id="submitBtn" class="btn btn-primary">💾 Simpan Drama</button>
-                    <a href="manage-movies.php" class="btn btn-secondary">❌ Batal</a>
+                    <button type="submit" id="submitBtn" class="btn btn-primary">Simpan Drama</button>
+                    <a href="manage-movies.php" class="btn btn-secondary">Batal</a>
                 </div>
             </form>
         </div>
@@ -506,10 +497,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
             const alert = document.getElementById('alert');
             alert.textContent = (type === 'success' ? '✅ ' : '❌ ') + message;
             alert.className = `alert alert-${type} show`;
-            
+
             // Scroll to alert
             alert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            
+
             // Auto hide after 5 seconds for success
             if (type === 'success') {
                 setTimeout(() => {
@@ -521,7 +512,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
         function updateStage(stageId, status) {
             const stage = document.getElementById(stageId);
             const icon = stage.querySelector('.icon');
-            
+
             if (status === 'active') {
                 stage.classList.add('active');
                 stage.classList.remove('complete');
@@ -534,9 +525,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
         }
 
         // Form submission with AJAX
-        document.getElementById('dramaForm').addEventListener('submit', function(e) {
+        document.getElementById('dramaForm').addEventListener('submit', function (e) {
             e.preventDefault();
-            
+
             const form = this;
             const submitBtn = document.getElementById('submitBtn');
             const uploadProgress = document.getElementById('uploadProgress');
@@ -545,57 +536,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
             const uploadedSize = document.getElementById('uploadedSize');
             const uploadSpeed = document.getElementById('uploadSpeed');
             const totalSize = document.getElementById('totalSize');
-            
+
             // Validate form
             if (!form.checkValidity()) {
                 form.reportValidity();
                 return;
             }
-            
+
             // Show upload progress
             uploadProgress.classList.add('show');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Mengupload...';
-            
+
             // Reset stages
             updateStage('stage-validate', 'active');
-            
+
             // Prepare form data
             const formData = new FormData(form);
             formData.append('ajax_upload', '1');
-            
+
             // Calculate total size
             let totalBytes = 0;
             const posterFile = document.getElementById('poster_file').files[0];
             const trailerFile = document.getElementById('trailer_file').files[0];
-            
+
             if (posterFile) totalBytes += posterFile.size;
             if (trailerFile) totalBytes += trailerFile.size;
-            
+
             totalSize.textContent = (totalBytes / 1048576).toFixed(2) + ' MB';
-            
+
             // Create XMLHttpRequest for progress tracking
             const xhr = new XMLHttpRequest();
-            
+
             let startTime = Date.now();
             let lastLoaded = 0;
-            
+
             // Upload progress
-            xhr.upload.addEventListener('progress', function(e) {
+            xhr.upload.addEventListener('progress', function (e) {
                 if (e.lengthComputable) {
                     const percentComplete = (e.loaded / e.total) * 100;
                     progressBarFill.style.width = percentComplete + '%';
                     progressBarFill.textContent = Math.round(percentComplete) + '%';
                     progressPercent.textContent = Math.round(percentComplete) + '%';
-                    
+
                     const mbLoaded = (e.loaded / 1048576).toFixed(2);
                     uploadedSize.textContent = mbLoaded + ' MB';
-                    
+
                     // Calculate speed
                     const elapsed = (Date.now() - startTime) / 1000; // seconds
                     const speed = e.loaded / elapsed / 1048576; // MB/s
                     uploadSpeed.textContent = speed.toFixed(2) + ' MB/s';
-                    
+
                     // Update stages based on progress
                     if (percentComplete < 30) {
                         updateStage('stage-validate', 'complete');
@@ -609,21 +600,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
                     }
                 }
             });
-            
+
             // Upload complete
-            xhr.addEventListener('load', function() {
+            xhr.addEventListener('load', function () {
                 if (xhr.status === 200) {
                     try {
                         const response = JSON.parse(xhr.responseText);
-                        
+
                         if (response.success) {
                             updateStage('stage-save', 'complete');
                             progressBarFill.style.width = '100%';
                             progressBarFill.textContent = '100%';
                             progressPercent.textContent = '100%';
-                            
+
                             showAlert(response.message, 'success');
-                            
+
                             // Redirect after 2 seconds
                             setTimeout(() => {
                                 window.location.href = response.redirect;
@@ -632,38 +623,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax_upload'])) {
                             showAlert(response.message, 'danger');
                             uploadProgress.classList.remove('show');
                             submitBtn.disabled = false;
-                            submitBtn.textContent = '💾 Simpan Drama';
+                            submitBtn.textContent = 'Simpan Drama';
                         }
                     } catch (e) {
                         showAlert('Invalid response from server', 'danger');
                         uploadProgress.classList.remove('show');
                         submitBtn.disabled = false;
-                        submitBtn.textContent = '💾 Simpan Drama';
+                        submitBtn.textContent = 'Simpan Drama';
                     }
                 } else {
                     showAlert('Server error: ' + xhr.status, 'danger');
                     uploadProgress.classList.remove('show');
                     submitBtn.disabled = false;
-                    submitBtn.textContent = '💾 Simpan Drama';
+                    submitBtn.textContent = 'Simpan Drama';
                 }
             });
-            
+
             // Upload error
-            xhr.addEventListener('error', function() {
+            xhr.addEventListener('error', function () {
                 showAlert('Network error. Please check your connection.', 'danger');
                 uploadProgress.classList.remove('show');
                 submitBtn.disabled = false;
-                submitBtn.textContent = '💾 Simpan Drama';
+                submitBtn.textContent = 'Simpan Drama';
             });
-            
+
             // Upload timeout
-            xhr.addEventListener('timeout', function() {
+            xhr.addEventListener('timeout', function () {
                 showAlert('Upload timeout. Please try again with smaller files.', 'danger');
                 uploadProgress.classList.remove('show');
                 submitBtn.disabled = false;
-                submitBtn.textContent = '💾 Simpan Drama';
+                submitBtn.textContent = 'Simpan Drama';
             });
-            
+
             // Send request
             xhr.open('POST', window.location.href);
             xhr.timeout = 600000; // 10 minutes timeout

@@ -8,12 +8,15 @@ $database = new Database();
 $db = $database->getConnection();
 $user_id = getUserId();
 
-// Ambil semua drama favorit user
+// Ambil semua drama favorit user dengan ratings
 $query = "SELECT d.*, f.created_at as favorited_at,
-          COUNT(DISTINCT e.id) as episode_count
+          COUNT(DISTINCT e.id) as episode_count,
+          COALESCE(AVG(r.rating), 0) as avg_rating,
+          COUNT(DISTINCT r.id) as total_ratings
           FROM favorit f
           JOIN drama d ON f.drama_id = d.id
           LEFT JOIN episodes e ON d.id = e.id_drama
+          LEFT JOIN ratings r ON d.id = r.drama_id
           WHERE f.user_id = :user_id
           GROUP BY d.id
           ORDER BY f.created_at DESC";
@@ -41,6 +44,32 @@ $favorites = $stmt->fetchAll();
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #0f0f0f;
             color: #fff;
+        }
+
+        .navbar .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar .role-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+
+        .role-user {
+            background: #4CAF50;
+        }
+
+        .role-admin {
+            background: #FF9800;
+        }
+
+        .role-superadmin {
+            background: #F44336;
         }
 
         .navbar {
@@ -259,6 +288,32 @@ $favorites = $stmt->fetchAll();
             .btn {
                 text-align: center;
             }
+
+            .navbar .user-info {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .navbar .role-badge {
+                padding: 4px 12px;
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 600;
+            }
+
+            .role-user {
+                background: #4CAF50;
+            }
+
+            .role-admin {
+                background: #FF9800;
+            }
+
+            .role-superadmin {
+                background: #F44336;
+            }
+
         }
     </style>
 </head>
@@ -273,13 +328,23 @@ $favorites = $stmt->fetchAll();
             <?php if (hasRole(['admin', 'superadmin'])): ?>
                 <a href="admin/">Admin Panel</a>
             <?php endif; ?>
-            <a href="logout.php">Logout</a>
+            <?php if (hasRole(['superadmin'])): ?>
+                <a href="admin/">SuperAdmin Panel</a>
+            <?php endif; ?>
+            <div class="user-info">
+                <span class="role-badge role-<?php echo getRole(); ?>">
+                    <?php echo strtoupper(getRole()); ?>
+                </span>
+                <span><?php echo getUsername(); ?></span>
+                <a href="logout.php">Logout</a>
+            </div>
         </div>
+    </div>
     </div>
 
     <div class="container">
         <div class="page-header">
-            <h2>❤️ Favorit Saya</h2>
+            <h2>Favorit Saya</h2>
             <p><?php echo count($favorites); ?> drama dalam daftar favorit</p>
         </div>
 
@@ -298,10 +363,10 @@ $favorites = $stmt->fetchAll();
                         <div class="favorite-info">
                             <div class="favorite-title"><?php echo htmlspecialchars($drama['title']); ?></div>
                             <div class="favorite-meta">
-                                <span>⭐ <?php echo $drama['rating']; ?></span>
-                                <span>📅 <?php echo $drama['rilis_tahun']; ?></span>
-                                <span>🎭 <?php echo htmlspecialchars($drama['genre']); ?></span>
-                                <span>📺 <?php echo $drama['episode_count']; ?> Episode</span>
+                                <span>⭐ <?php echo number_format($drama['avg_rating'], 1); ?></span>
+                                <span>(<?php echo $drama['total_ratings']; ?> rating)</span>
+                                <span><?php echo $drama['rilis_tahun']; ?></span>
+                                <span><?php echo $drama['episode_count']; ?> Episode</span>
                             </div>
                             <div class="favorite-description">
                                 <?php echo htmlspecialchars($drama['deskripsi']); ?>
@@ -309,7 +374,7 @@ $favorites = $stmt->fetchAll();
                             <div class="favorite-actions">
                                 <!-- Link ke halaman watchlist untuk lihat detail drama -->
                                 <a href="watchlist.php?id=<?php echo $drama['id']; ?>" class="btn btn-view">
-                                    📋 Lihat Detail
+                                    Lihat Detail
                                 </a>
 
                                 <!-- Jika ada episode, tampilkan tombol tonton -->
@@ -325,7 +390,7 @@ $favorites = $stmt->fetchAll();
                                 <?php endif; ?>
 
                                 <button class="btn btn-remove" onclick="removeFavorite(<?php echo $drama['id']; ?>, this)">
-                                    🗑️ Hapus dari Favorit
+                                    Hapus dari Favorit
                                 </button>
                             </div>
                         </div>
@@ -334,10 +399,10 @@ $favorites = $stmt->fetchAll();
             </div>
         <?php else: ?>
             <div class="empty-state">
-                <div class="empty-state-icon">💔</div>
-                <h3>Belum ada drama favorit</h3>
+                <div class="empty-state-icon">OH NO</div>
+                <h3>Anda Belum ada drama favorit</h3>
                 <p>Mulai tambahkan drama favorit Anda dari halaman drama</p>
-                <a href="movies.php">🎬 Jelajahi Drama</a>
+                <a href="movies.php">Jelajahi Drama</a>
             </div>
         <?php endif; ?>
     </div>

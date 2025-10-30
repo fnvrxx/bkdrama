@@ -277,6 +277,7 @@ if (isset($_GET['registered'])) {
             <p class="register-link">
                 Belum punya akun? Silahkan <a href="./register.php">daftar di sini</a>
             </p>
+            <p> <a href="./index.php"> kembali</a></p>
         </div>
 
     </div>

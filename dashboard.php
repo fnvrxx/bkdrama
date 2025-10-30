@@ -31,8 +31,14 @@ $watch_stmt = $db->prepare($watch_query);
 $watch_stmt->execute([getUserId()]);
 $stats['watched_episodes'] = $watch_stmt->fetch()['total'];
 
-// Drama terbaru (limit 6) dengan trailer info
-$recent_query = "SELECT * FROM drama ORDER BY created_at DESC LIMIT 6";
+// Drama terbaru (limit 6) dengan trailer info dan ratings
+$recent_query = "SELECT d.*,
+                 COALESCE(AVG(r.rating), 0) as avg_rating,
+                 COUNT(DISTINCT r.id) as total_ratings
+                 FROM drama d
+                 LEFT JOIN ratings r ON d.id = r.drama_id
+                 GROUP BY d.id
+                 ORDER BY d.created_at DESC LIMIT 6";
 $recent_stmt = $db->query($recent_query);
 $recent_dramas = $recent_stmt->fetchAll();
 
@@ -378,6 +384,41 @@ $continue_watching = $continue_stmt->fetchAll();
             margin-bottom: 20px;
         }
 
+        .btn-remove {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 0, 0, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 10;
+        }
+
+        .btn-remove:hover {
+            background: rgba(255, 0, 0, 1);
+            transform: scale(1.1);
+        }
+
+        .continue-card:hover .btn-remove {
+            opacity: 1;
+        }
+
+        .continue-card.removing {
+            opacity: 0;
+            transform: translateX(-100%);
+            transition: all 0.3s;
+        }
+
         @media (max-width: 768px) {
             .navbar {
                 flex-direction: column;
@@ -401,6 +442,11 @@ $continue_watching = $continue_stmt->fetchAll();
                 width: 100%;
                 height: 180px;
             }
+
+            .btn-remove {
+                opacity: 1;
+                /* Always show on mobile */
+            }
         }
     </style>
 </head>
@@ -415,6 +461,9 @@ $continue_watching = $continue_stmt->fetchAll();
             <?php if (hasRole(['admin', 'superadmin'])): ?>
                 <a href="admin/">Admin Panel</a>
             <?php endif; ?>
+            <?php if (hasRole(['superadmin'])): ?>
+                <a href="admin/">SuperAdmin Panel</a>
+            <?php endif; ?>
             <div class="user-info">
                 <span class="role-badge role-<?php echo getRole(); ?>">
                     <?php echo strtoupper(getRole()); ?>
@@ -427,7 +476,7 @@ $continue_watching = $continue_stmt->fetchAll();
 
     <div class="container">
         <div class="welcome-section">
-            <h2>Selamat datang, <?php echo getUsername(); ?>! 👋</h2>
+            <h2>Selamat datang, <?php echo getUsername(); ?>!</h2>
             <p>Nikmati koleksi drama Korea terbaik</p>
         </div>
 
@@ -447,49 +496,53 @@ $continue_watching = $continue_stmt->fetchAll();
         </div>
 
         <!-- Continue Watching Section -->
-        <?php if (count($continue_watching) > 0): ?>
-            <div class="section-title">
-                <h3>📺 Lanjutkan Menonton</h3>
-                <a href="continue-watching.php">Lihat Semua →</a>
-            </div>
-            <?php foreach ($continue_watching as $item): ?>
-                <div class="continue-card">
-                    <div class="continue-thumbnail">
-                        <?php if (!empty($item['drama_thumbnail']) && file_exists($item['drama_thumbnail'])): ?>
-                            <img src="<?php echo htmlspecialchars($item['drama_thumbnail']); ?>"
-                                alt="<?php echo htmlspecialchars($item['drama_title']); ?>">
-                        <?php else: ?>
-                            🎬
-                        <?php endif; ?>
-                        <div class="play-overlay">▶</div>
+        <div id="continue-watching-container">
+            <?php if (count($continue_watching) > 0): ?>
+                <h1>Lanjutkan Menonton</h1>
+                <?php foreach ($continue_watching as $item): ?>
+                    <div class="continue-card" id="continue-card-<?php echo $item['eps_id']; ?>">
+                        <div class="continue-thumbnail">
+                            <?php if (!empty($item['drama_thumbnail']) && file_exists($item['drama_thumbnail'])): ?>
+                                <img src="<?php echo htmlspecialchars($item['drama_thumbnail']); ?>"
+                                    alt="<?php echo htmlspecialchars($item['drama_title']); ?>">
+                            <?php else: ?>
+                                <p> Tidak ada thumbnail</p>
+                            <?php endif; ?>
+                            <div class="play-overlay">▶</div>
+                        </div>
+                        <div class="continue-info">
+                            <div class="continue-title"><?php echo htmlspecialchars($item['drama_title']); ?></div>
+                            <div class="continue-episode">
+                                Episode <?php echo $item['eps_number']; ?>: <?php echo htmlspecialchars($item['eps_title']); ?>
+                            </div>
+                            <div class="continue-progress-text">
+                                Progress: <?php echo gmdate("i:s", $item['progress']); ?>
+                            </div>
+                            <div class="progress-bar">
+                                <?php
+                                // Assume average episode is 60 minutes (3600 seconds)
+                                $estimated_duration = 3600;
+                                $progress_percent = min(100, ($item['progress'] / $estimated_duration) * 100);
+                                ?>
+                                <div class="progress-fill" style="width: <?php echo $progress_percent; ?>%"></div>
+                            </div>
+                            <a href="watch-episode.php?id=<?php echo $item['eps_id']; ?>" class="btn">
+                                ▶ Lanjutkan
+                            </a>
+                        </div>
+                        <!-- Remove Button -->
+                        <button class="btn-remove" onclick="removeFromContinueWatching(<?php echo $item['eps_id']; ?>)"
+                            title="Hapus dari lanjutkan menonton">
+                            ✕
+                        </button>
                     </div>
-                    <div class="continue-info">
-                        <div class="continue-title"><?php echo htmlspecialchars($item['drama_title']); ?></div>
-                        <div class="continue-episode">
-                            Episode <?php echo $item['eps_number']; ?>: <?php echo htmlspecialchars($item['eps_title']); ?>
-                        </div>
-                        <div class="continue-progress-text">
-                            Progress: <?php echo gmdate("i:s", $item['progress']); ?>
-                        </div>
-                        <div class="progress-bar">
-                            <?php
-                            // Assume average episode is 60 minutes (3600 seconds)
-                            $estimated_duration = 3600;
-                            $progress_percent = min(100, ($item['progress'] / $estimated_duration) * 100);
-                            ?>
-                            <div class="progress-fill" style="width: <?php echo $progress_percent; ?>%"></div>
-                        </div>
-                        <a href="watch-episode.php?id=<?php echo $item['eps_id']; ?>" class="btn">
-                            ▶ Lanjutkan
-                        </a>
-                    </div>
-                </div>
-            <?php endforeach; ?>
-        <?php endif; ?>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
 
         <!-- Recent Dramas Section -->
         <div class="section-title">
-            <h3>🎬 Drama Terbaru</h3>
+            <h3>Drama Terbaru</h3>
             <a href="movies.php">Lihat Semua →</a>
         </div>
 
@@ -509,8 +562,9 @@ $continue_watching = $continue_stmt->fetchAll();
                             <div class="drama-info">
                                 <div class="drama-title"><?php echo htmlspecialchars($drama['title']); ?></div>
                                 <div class="drama-meta">
-                                    <span>⭐ <?php echo $drama['rating']; ?></span>
-                                    <span>📅 <?php echo $drama['rilis_tahun']; ?></span>
+                                    <span>⭐ <?php echo number_format($drama['avg_rating'], 1); ?></span>
+                                    <span>(<?php echo $drama['total_ratings']; ?> rating)</span>
+                                    <span> <?php echo $drama['rilis_tahun']; ?></span>
                                 </div>
                             </div>
                         </div>
@@ -525,5 +579,89 @@ $continue_watching = $continue_stmt->fetchAll();
         <?php endif; ?>
     </div>
 </body>
+<script>
+    /**
+     * Remove episode from continue watching list
+     */
+    function removeFromContinueWatching(episodeId) {
+        // Confirm before removing
+        if (!confirm('Hapus dari daftar lanjutkan menonton?')) {
+            return;
+        }
+
+        const card = document.getElementById('continue-card-' + episodeId);
+
+        if (!card) {
+            console.error('Card not found for episode ID:', episodeId);
+            alert('Terjadi kesalahan: Card tidak ditemukan');
+            return;
+        }
+
+        // Add removing animation
+        card.classList.add('removing');
+
+        // Send AJAX request to delete from history
+        const formData = new FormData();
+        formData.append('action', 'delete_progress');
+        formData.append('episode_id', episodeId);
+
+        fetch('api/watch-history-api.php', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Remove response:', data);
+
+                if (data.success) {
+                    // Wait for animation to finish, then remove element
+                    setTimeout(() => {
+                        card.remove();
+
+                        // Check if there are any continue watching cards left
+                        const remainingCards = document.querySelectorAll('.continue-card');
+                        console.log('Remaining cards:', remainingCards.length);
+
+                        if (remainingCards.length === 0) {
+                            // Show empty state
+                            showEmptyState();
+                        }
+                    }, 300);
+                } else {
+                    // Show error
+                    card.classList.remove('removing');
+                    alert('Gagal menghapus: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error removing from continue watching:', error);
+                card.classList.remove('removing');
+                alert('Terjadi kesalahan saat menghapus: ' + error.message);
+            });
+    }
+
+    /**
+     * Show empty state when no more continue watching items
+     */
+    function showEmptyState() {
+        const container = document.getElementById('continue-watching-container');
+        if (container) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">Yah</div>
+                    <p>Yuk nonton drama! nanti akan kesimpan</p>
+                    <a href="movies.php" class="btn" style="margin-top: 15px;">Jelajahi Drama</a>
+                </div>
+            `;
+        } else {
+            console.error('Container not found');
+        }
+    }
+</script>
 
 </html>

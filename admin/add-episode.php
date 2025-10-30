@@ -364,7 +364,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
 
                 <div class="form-group">
-                    <label for="thumbnail_file">Upload Thumbnail (Optional) 🖼️</label>
+                    <label for="thumbnail_file">Upload Thumbnail</label>
                     <input type="file" id="thumbnail_file" name="thumbnail_file" accept="image/*"
                         onchange="showFileName(this, 'thumb-name'); previewImage(this, 'thumb-preview')">
                     <small>Maksimal 5MB - Format: JPG, PNG, WebP, GIF</small>

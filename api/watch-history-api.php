@@ -209,7 +209,8 @@ if ($action === 'continue_watching' && $_SERVER['REQUEST_METHOD'] === 'GET') {
 
     try {
         // Get episode info to determine drama_id
-        $query = "SELECT 
+        // Note: LIMIT must be an integer, not a bound parameter with quotes
+        $query = "SELECT
                     uh.eps_id as episode_id,
                     uh.progress as watched_duration,
                     uh.last_watched,
@@ -227,10 +228,10 @@ if ($action === 'continue_watching' && $_SERVER['REQUEST_METHOD'] === 'GET') {
                     AND uh.completed = 0
                     AND uh.progress > 0
                   ORDER BY uh.last_watched DESC
-                  LIMIT ?";
+                  LIMIT " . $limit;
 
         $stmt = $db->prepare($query);
-        $stmt->execute([$user_id, $limit]);
+        $stmt->execute([$user_id]);
 
         $continue_watching = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

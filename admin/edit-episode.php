@@ -30,6 +30,7 @@ if (!$episode) {
 }
 
 $error = '';
+$success = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $eps_number = intval($_POST['eps_number'] ?? 0);
@@ -52,10 +53,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($videoUpload['success']) {
                     // Delete old video
-                    if ($link_video)
+                    if ($link_video && file_exists('../' . $link_video)) {
                         deleteFile('../' . $link_video);
+                    }
                     // Set new video
                     $link_video = 'uploads/videos/' . $videoUpload['filename'];
+                } else {
+                    $error = "Gagal upload video: " . $videoUpload['error'];
                 }
             }
 
@@ -65,57 +69,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 if ($thumbUpload['success']) {
                     // Delete old thumbnail
-                    if ($thumbnail)
+                    if ($thumbnail && file_exists('../' . $thumbnail)) {
                         deleteFile('../' . $thumbnail);
+                    }
                     // Set new thumbnail
                     $thumbnail = 'uploads/thumbnails/' . $thumbUpload['filename'];
+                } else {
+                    $error = "Gagal upload thumbnail: " . $thumbUpload['error'];
                 }
             }
 
-            // Cek duplicate episode number (exclude current episode)
-            $check_query = "SELECT id FROM episodes WHERE id_drama = ? AND eps_number = ? AND id != ?";
-            $check_stmt = $db->prepare($check_query);
-            $check_stmt->execute([$episode['drama_id'], $eps_number, $episode_id]);
+            // Only proceed if no upload errors
+            if (empty($error)) {
+                // Cek duplicate episode number (exclude current episode)
+                $check_query = "SELECT id FROM episodes WHERE id_drama = ? AND eps_number = ? AND id != ?";
+                $check_stmt = $db->prepare($check_query);
+                $check_stmt->execute([$episode['drama_id'], $eps_number, $episode_id]);
 
-            if ($check_stmt->rowCount() > 0) {
-                $error = "Episode number {$eps_number} sudah digunakan episode lain!";
-            } else {
-                $update_query = "UPDATE episodes SET 
-                                eps_number = :eps_number,
-                                eps_title = :eps_title,
-                                deskripsi = :deskripsi,
-                                durasi = :durasi,
-                                link_video = :link_video,
-                                thumbnail = :thumbnail
-                                WHERE id = :id";
-
-                $update_stmt = $db->prepare($update_query);
-                $update_stmt->bindParam(':eps_number', $eps_number);
-                $update_stmt->bindParam(':eps_title', $eps_title);
-                $update_stmt->bindParam(':deskripsi', $deskripsi);
-                $update_stmt->bindParam(':durasi', $durasi);
-                $update_stmt->bindParam(':link_video', $link_video);
-                $update_stmt->bindParam(':thumbnail', $thumbnail);
-                $update_stmt->bindParam(':id', $episode_id);
-
-                if ($update_stmt->execute()) {
-                    header("Location: manage-episodes.php?drama_id={$episode['drama_id']}&success=updated");
-                    exit();
+                if ($check_stmt->rowCount() > 0) {
+                    $error = "Episode number {$eps_number} sudah digunakan episode lain!";
                 } else {
-                    $error = "Gagal mengupdate episode!";
+                    $update_query = "UPDATE episodes SET 
+                                    eps_number = :eps_number,
+                                    eps_title = :eps_title,
+                                    deskripsi = :deskripsi,
+                                    durasi = :durasi,
+                                    link_video = :link_video,
+                                    thumbnail = :thumbnail
+                                    WHERE id = :id";
+
+                    $update_stmt = $db->prepare($update_query);
+                    $update_stmt->bindParam(':eps_number', $eps_number);
+                    $update_stmt->bindParam(':eps_title', $eps_title);
+                    $update_stmt->bindParam(':deskripsi', $deskripsi);
+                    $update_stmt->bindParam(':durasi', $durasi);
+                    $update_stmt->bindParam(':link_video', $link_video);
+                    $update_stmt->bindParam(':thumbnail', $thumbnail);
+                    $update_stmt->bindParam(':id', $episode_id);
+
+                    if ($update_stmt->execute()) {
+                        header("Location: manage-episodes.php?drama_id={$episode['drama_id']}&success=updated");
+                        exit();
+                    } else {
+                        $error = "Gagal mengupdate episode!";
+                    }
                 }
             }
         } catch (PDOException $e) {
             $error = "Database error: " . $e->getMessage();
         }
     }
-} else {
-    // Pre-fill form
-    $eps_number = $episode['eps_number'];
-    $eps_title = $episode['eps_title'];
-    $deskripsi = $episode['deskripsi'];
-    $durasi = $episode['durasi'];
 }
+
+// Pre-fill form values
+$eps_number = $episode['eps_number'];
+$eps_title = $episode['eps_title'];
+$deskripsi = $episode['deskripsi'];
+$durasi = $episode['durasi'];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -240,6 +250,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             gap: 20px;
         }
 
+        .current-file {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .current-file-icon {
+            font-size: 24px;
+        }
+
+        .current-file-info {
+            flex: 1;
+        }
+
+        .current-file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .current-file-path {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .current-thumbnail {
+            max-width: 200px;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: 2px solid #667eea;
+        }
+
         .btn {
             padding: 12px 24px;
             border-radius: 5px;
@@ -288,6 +334,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border: 1px solid #f5c6cb;
         }
 
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .upload-progress {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .progress-wrap {
+            background: #eef2ff;
+            border-radius: 6px;
+            padding: 6px;
+        }
+
+        .progress-bar {
+            height: 14px;
+            width: 0%;
+            background: #667eea;
+            border-radius: 4px;
+            transition: width 0.2s;
+        }
+
+        .progress-text {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #333;
+        }
+
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -316,8 +393,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="alert alert-danger">❌ <?php echo $error; ?></div>
         <?php endif; ?>
 
+        <?php if ($success): ?>
+            <div class="alert alert-success">✅ <?php echo $success; ?></div>
+        <?php endif; ?>
+
         <div class="form-container">
-            <form method="POST" action="">
+            <form method="POST" action="" id="upload-form" enctype="multipart/form-data">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="eps_number">Episode Number *</label>
@@ -346,28 +427,228 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <small>Opsional - jelaskan isi episode</small>
                 </div>
 
+                <!-- VIDEO UPLOAD -->
                 <div class="form-group">
-                    <label for="link_video">Link Video *</label>
-                    <input type="text" id="link_video" name="link_video" required
-                        value="<?php echo htmlspecialchars($link_video); ?>">
-                    <small>Path file video atau URL streaming</small>
+                    <label for="video_file">Upload Video Episode 🎬</label>
+
+                    <?php if (!empty($episode['link_video'])): ?>
+                        <div class="current-file">
+                            <div class="current-file-icon">🎬</div>
+                            <div class="current-file-info">
+                                <div class="current-file-name">
+                                    <?php
+                                    $video_name = basename($episode['link_video']);
+                                    echo htmlspecialchars($video_name);
+                                    ?>
+                                </div>
+                                <div class="current-file-path">
+                                    <?php echo htmlspecialchars($episode['link_video']); ?>
+                                    <?php if (file_exists('../' . $episode['link_video'])): ?>
+                                        <span style="color: #28a745;">✓ File exists</span>
+                                    <?php else: ?>
+                                        <span style="color: #dc3545;">✗ File not found</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <div class="current-file" style="background: #fff3cd; border: 1px solid #ffc107;">
+                            <div class="current-file-icon">⚠️</div>
+                            <div class="current-file-info">
+                                <div class="current-file-name" style="color: #856404;">Tidak ada video</div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <input type="file" id="video_file" name="video_file" accept="video/*"
+                        onchange="showFileName(this, 'video-name')">
+                    <small>Opsional - Upload video baru jika ingin mengganti. Maksimal 500MB - Format: MP4, WebM, OGG,
+                        AVI, MKV, MOV</small>
+                    <div id="video-name" style="margin-top: 8px; color: #667eea; font-size: 13px;"></div>
                 </div>
 
+                <!-- THUMBNAIL UPLOAD -->
                 <div class="form-group">
-                    <label for="thumbnail">Thumbnail URL</label>
-                    <input type="text" id="thumbnail" name="thumbnail"
-                        value="<?php echo htmlspecialchars($thumbnail); ?>">
-                    <small>Opsional - thumbnail preview episode</small>
+                    <label for="thumbnail_file">Upload Thumbnail 🖼️</label>
+
+                    <?php if (!empty($episode['thumbnail'])): ?>
+                        <div class="current-file">
+                            <div class="current-file-icon">🖼️</div>
+                            <div class="current-file-info">
+                                <div class="current-file-name">
+                                    <?php
+                                    $thumb_name = basename($episode['thumbnail']);
+                                    echo htmlspecialchars($thumb_name);
+                                    ?>
+                                </div>
+                                <div class="current-file-path">
+                                    <?php echo htmlspecialchars($episode['thumbnail']); ?>
+                                    <?php if (file_exists('../' . $episode['thumbnail'])): ?>
+                                        <span style="color: #28a745;">✓ File exists</span>
+                                    <?php else: ?>
+                                        <span style="color: #dc3545;">✗ File not found</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+
+                        <?php if (file_exists('../' . $episode['thumbnail'])): ?>
+                            <img src="../<?php echo htmlspecialchars($episode['thumbnail']); ?>" alt="Current thumbnail"
+                                class="current-thumbnail">
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <div class="current-file" style="background: #fff3cd; border: 1px solid #ffc107;">
+                            <div class="current-file-icon">⚠️</div>
+                            <div class="current-file-info">
+                                <div class="current-file-name" style="color: #856404;">Tidak ada thumbnail</div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
+                    <input type="file" id="thumbnail_file" name="thumbnail_file" accept="image/*"
+                        onchange="showFileName(this, 'thumb-name'); previewImage(this, 'thumb-preview')">
+                    <small>Opsional - Upload thumbnail baru jika ingin mengganti. Maksimal 5MB - Format: JPG, PNG, WebP,
+                        GIF</small>
+                    <div id="thumb-name" style="margin-top: 8px; color: #667eea; font-size: 13px;"></div>
+                    <img id="thumb-preview" class="current-thumbnail" style="display: none;">
+                </div>
+
+                <!-- Upload progress -->
+                <div class="upload-progress" id="upload-progress">
+                    <div class="progress-wrap">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                    <div class="progress-text" id="progress-text">Menunggu upload...</div>
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn btn-primary">💾 Update Episode</button>
+                    <button id="submit-btn" type="submit" class="btn btn-primary">💾 Update Episode</button>
                     <a href="manage-episodes.php?drama_id=<?php echo $episode['drama_id']; ?>"
                         class="btn btn-secondary">❌ Batal</a>
                 </div>
             </form>
         </div>
     </div>
+
+    <script>
+        function showFileName(input, targetId) {
+            const target = document.getElementById(targetId);
+            if (input.files && input.files[0]) {
+                const fileSize = (input.files[0].size / 1048576).toFixed(2); // MB
+                target.textContent = `📁 File baru: ${input.files[0].name} (${fileSize} MB)`;
+            }
+        }
+
+        function previewImage(input, imgId) {
+            const img = document.getElementById(imgId);
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    img.src = e.target.result;
+                    img.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Handle AJAX upload with progress bar
+        (function () {
+            const form = document.getElementById('upload-form');
+            if (!form) return;
+
+            const progressWrap = document.getElementById('upload-progress');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const submitBtn = document.getElementById('submit-btn');
+
+            form.addEventListener('submit', function (e) {
+                // Check if any file is being uploaded
+                const videoInput = document.getElementById('video_file');
+                const thumbInput = document.getElementById('thumbnail_file');
+
+                const hasVideo = videoInput && videoInput.files && videoInput.files.length > 0;
+                const hasThumb = thumbInput && thumbInput.files && thumbInput.files.length > 0;
+
+                // If no files are being uploaded, use normal form submit
+                if (!hasVideo && !hasThumb) {
+                    return true; // Allow normal form submission
+                }
+
+                // Use AJAX for file uploads
+                e.preventDefault();
+
+                const fd = new FormData(form);
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', form.action || window.location.href, true);
+
+                xhr.upload.addEventListener('progress', function (ev) {
+                    if (ev.lengthComputable) {
+                        const percent = Math.round((ev.loaded / ev.total) * 100);
+                        progressWrap.style.display = 'block';
+                        progressBar.style.width = percent + '%';
+                        progressText.textContent = `Uploading: ${percent}% (${Math.round(ev.loaded / 1048576)} / ${Math.round(ev.total / 1048576)} MB)`;
+                    }
+                });
+
+                xhr.addEventListener('load', function () {
+                    submitBtn.disabled = false;
+
+                    // Check if redirect happened
+                    try {
+                        const respUrl = xhr.responseURL || '';
+                        if (respUrl.includes('manage-episodes.php')) {
+                            window.location.href = respUrl;
+                            return;
+                        }
+                    } catch (err) {
+                        // ignore
+                    }
+
+                    // Check for success in response
+                    if (xhr.responseText && xhr.responseText.indexOf('success=updated') !== -1) {
+                        const match = xhr.responseText.match(/manage-episodes\.php\?[^"'<>\s]*/);
+                        if (match) {
+                            window.location.href = match[0];
+                            return;
+                        }
+                    }
+
+                    progressText.innerHTML = 'Upload selesai. Memproses...';
+
+                    // Check for errors
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(xhr.responseText, 'text/html');
+                        const alertEl = doc.querySelector('.alert-danger');
+                        if (alertEl) {
+                            alert(alertEl.textContent.trim());
+                            progressWrap.style.display = 'none';
+                        } else {
+                            // Success - reload to show updated data
+                            window.location.reload();
+                        }
+                    } else {
+                        alert('Terjadi kesalahan saat mengupload. Silakan coba lagi.');
+                        progressWrap.style.display = 'none';
+                    }
+                });
+
+                xhr.addEventListener('error', function () {
+                    submitBtn.disabled = false;
+                    alert('Upload gagal karena kesalahan jaringan.');
+                    progressWrap.style.display = 'none';
+                });
+
+                // Disable button to prevent double submits
+                submitBtn.disabled = true;
+                progressWrap.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressText.textContent = 'Memulai upload...';
+
+                xhr.send(fd);
+            });
+        })();
+    </script>
 </body>
 
 </html>

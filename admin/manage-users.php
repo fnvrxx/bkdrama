@@ -29,13 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $error = "Username atau email sudah digunakan!";
         } else {
             // Hash password
-            $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+            // $hashed_password = password_hash(password: $password, PASSWORD_DEFAULT);
 
             $insert_query = "INSERT INTO users (username, email, password, role_id, created_at) 
                            VALUES (?, ?, ?, ?, NOW())";
             $insert_stmt = $db->prepare($insert_query);
 
-            if ($insert_stmt->execute([$username, $email, $hashed_password, $role_id])) {
+            if ($insert_stmt->execute([$username, $email, $password, $role_id])) {
                 $success = "User berhasil ditambahkan!";
             } else {
                 $error = "Gagal menambahkan user!";
@@ -68,10 +68,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $result = $update_stmt->execute([$username, $email, $role_id, $user_id]);
             } else {
                 // Update with new password
-                $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
+                // $hashed_password = password_hash(password: $new_password, PASSWORD_DEFAULT);
                 $update_query = "UPDATE users SET username = ?, email = ?, password = ?, role_id = ? WHERE id = ?";
                 $update_stmt = $db->prepare($update_query);
-                $result = $update_stmt->execute([$username, $email, $hashed_password, $role_id, $user_id]);
+                $result = $update_stmt->execute([$username, $email, $password, $role_id, $user_id]);
             }
 
             if ($result) {
@@ -561,7 +561,6 @@ $user_stats = $stats_stmt->fetch();
             <table>
                 <thead>
                     <tr>
-                        <th>ID</th>
                         <th>Username</th>
                         <th>Email</th>
                         <th>Role</th>
@@ -572,7 +571,6 @@ $user_stats = $stats_stmt->fetch();
                 <tbody>
                     <?php foreach ($users as $user): ?>
                         <tr class="<?php echo $user['id'] == getUserId() ? 'current-user' : ''; ?>">
-                            <td><?php echo $user['id']; ?></td>
                             <td>
                                 <strong><?php echo htmlspecialchars($user['username']); ?></strong>
                                 <?php if ($user['id'] == getUserId()): ?>

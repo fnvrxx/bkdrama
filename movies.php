@@ -11,10 +11,14 @@ $db = $database->getConnection();
 $genre_filter = isset($_GET['genre']) ? $_GET['genre'] : '';
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 
-// Query drama
-$query = "SELECT d.*, COUNT(DISTINCT e.id) as episode_count 
-          FROM drama d 
-          LEFT JOIN episodes e ON d.id = e.id_drama 
+// Query drama with average ratings from users
+$query = "SELECT d.*,
+          COUNT(DISTINCT e.id) as episode_count,
+          COALESCE(AVG(r.rating), 0) as avg_rating,
+          COUNT(DISTINCT r.id) as total_ratings
+          FROM drama d
+          LEFT JOIN episodes e ON d.id = e.id_drama
+          LEFT JOIN ratings r ON d.id = r.drama_id
           WHERE 1=1";
 
 if (!empty($genre_filter)) {
@@ -66,6 +70,19 @@ $favorited = $fav_stmt->fetchAll(PDO::FETCH_COLUMN);
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+        }
+
+        .navbar .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .navbar .role-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
         }
 
         body {
@@ -395,6 +412,18 @@ $favorited = $fav_stmt->fetchAll(PDO::FETCH_COLUMN);
             color: #666;
         }
 
+        .role-user {
+            background: #4CAF50;
+        }
+
+        .role-admin {
+            background: #FF9800;
+        }
+
+        .role-superadmin {
+            background: #F44336;
+        }
+
         @media (max-width: 768px) {
             .drama-grid {
                 grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -413,13 +442,22 @@ $favorited = $fav_stmt->fetchAll(PDO::FETCH_COLUMN);
             <?php if (hasRole(['admin', 'superadmin'])): ?>
                 <a href="admin/">Admin Panel</a>
             <?php endif; ?>
-            <a href="logout.php">Logout</a>
+            <?php if (hasRole(['superadmin'])): ?>
+                <a href="admin/">SuperAdmin Panel</a>
+            <?php endif; ?>
+            <div class="user-info">
+                <span class="role-badge role-<?php echo getRole(); ?>">
+                    <?php echo strtoupper(getRole()); ?>
+                </span>
+                <span><?php echo getUsername(); ?></span>
+                <a href="logout.php">Logout</a>
+            </div>
         </div>
     </div>
 
     <div class="container">
         <div class="page-header">
-            <h2>📺 Jelajahi Drama Korea</h2>
+            <h2>Jelajahi Drama Korea</h2>
         </div>
 
         <form method="GET" class="filters">
@@ -459,16 +497,17 @@ $favorited = $fav_stmt->fetchAll(PDO::FETCH_COLUMN);
                         <div class="drama-info">
                             <div class="drama-title"><?php echo htmlspecialchars($drama['title']); ?></div>
                             <div class="drama-meta">
-                                <span>⭐ <?php echo $drama['rating']; ?></span>
-                                <span>📅 <?php echo $drama['rilis_tahun']; ?></span>
-                                <span>📺 <?php echo $drama['episode_count']; ?> Eps</span>
+                                <span>⭐ <?php echo number_format($drama['avg_rating'], 1); ?></span>
+                                <span>(<?php echo $drama['total_ratings']; ?> rating)</span>
+                                <span><?php echo $drama['rilis_tahun']; ?></span>
+                                <span><?php echo $drama['episode_count']; ?> Eps</span>
                             </div>
                             <div class="drama-description">
                                 <?php echo htmlspecialchars($drama['deskripsi']); ?>
                             </div>
                             <div class="drama-actions">
                                 <a href="watchlist.php?id=<?php echo $drama['id']; ?>" class="btn-view">
-                                    👁️ Lihat
+                                    Lihat
                                 </a>
                                 <button
                                     class="btn-favorite <?php echo in_array($drama['id'], $favorited) ? 'favorited' : ''; ?>"
@@ -479,7 +518,7 @@ $favorited = $fav_stmt->fetchAll(PDO::FETCH_COLUMN);
                                     <button class="btn-trailer"
                                         onclick="showTrailer(<?php echo $drama['id']; ?>, '<?php echo addslashes($drama['title']); ?>', '<?php echo addslashes($drama['trailer']); ?>')"
                                         title="Tonton Trailer">
-                                        🎬
+                                        Trailer
                                     </button>
                                 <?php endif; ?>
                             </div>
@@ -519,7 +558,7 @@ $favorited = $fav_stmt->fetchAll(PDO::FETCH_COLUMN);
             const source = document.getElementById('trailerSource');
             const titleEl = document.getElementById('trailerTitle');
 
-            titleEl.textContent = '🎬 Trailer: ' + title;
+            titleEl.textContent = 'Trailer: ' + title;
             source.src = trailerPath;
             video.load();
 

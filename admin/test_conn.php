@@ -2,6 +2,12 @@
 // test_connection.php
 // File ini untuk mengecek koneksi database dan struktur tabel
 
+require_once '../config/database.php';
+require_once '../includes/auth.php';
+
+// Require superadmin access
+requireRole(['superadmin']);
+
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 

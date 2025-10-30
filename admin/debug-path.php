@@ -1,10 +1,14 @@
 <?php
+
 /**
  * DEBUG PATHS - Check uploaded files accessibility
- * Akses: http://localhost/bkdrama/debug-paths.php
  */
 
-require_once 'config/database.php';
+require_once '../config/database.php';
+require_once '../includes/auth.php';
+
+// Require superadmin access
+requireRole(['superadmin']);
 
 $database = new Database();
 $db = $database->getConnection();
@@ -13,12 +17,12 @@ $db = $database->getConnection();
 $episodes_query = "SELECT e.id, e.eps_title, e.link_video, e.thumbnail, d.title as drama_title 
                    FROM episodes e 
                    JOIN drama d ON e.id_drama = d.id 
-                   LIMIT 5";
+                   LIMIT 10";
 $episodes_stmt = $db->query($episodes_query);
 $episodes = $episodes_stmt->fetchAll();
 
 // Get sample dramas with posters
-$drama_query = "SELECT id, title, thumbnail, trailer FROM drama LIMIT 5";
+$drama_query = "SELECT id, title, thumbnail, trailer FROM drama LIMIT 10";
 $drama_stmt = $db->query($drama_query);
 $dramas = $drama_stmt->fetchAll();
 
@@ -135,7 +139,7 @@ $dramas = $drama_stmt->fetchAll();
                     <tr>
                         <td><?php echo $ep['id']; ?></td>
                         <td><?php echo htmlspecialchars($ep['drama_title']); ?><br>
-                            <small><?php echo htmlspecialchars($ep['eps_title']); ?></small>
+                            <small><?php echo htmlspecialchars($ep['thumbnail']); ?></small>
                         </td>
                         <td class="code"><?php echo htmlspecialchars($ep['link_video'] ?? 'NULL'); ?></td>
                         <td>
@@ -257,25 +261,9 @@ $dramas = $drama_stmt->fetchAll();
 
         <h3>📝 Kesimpulan & Solusi</h3>
         <div style="background: #e7f3ff; padding: 15px; border-radius: 5px; border-left: 4px solid #667eea;">
-            <strong>Jika File Exists = ❌ NO:</strong>
-            <ul>
-                <li>Path di database salah</li>
-                <li>File tidak ada di folder uploads/</li>
-                <li>Cek di <code>uploads/videos/</code> apakah file ada</li>
-            </ul>
-
-            <strong>Jika File Exists = ✅ YES tapi Preview tidak muncul:</strong>
-            <ul>
-                <li>Browser block file (MIME type issue)</li>
-                <li>Format video tidak supported</li>
-                <li>Coba akses langsung: <code>http://localhost/bkdrama/uploads/videos/filename.mp4</code></li>
-            </ul>
-
             <strong>Fix Path Issue:</strong>
             <pre style="background: white; padding: 10px; border-radius: 3px;">
-Path di database harus: uploads/videos/filename.mp4
-BUKAN: ../uploads/videos/filename.mp4
-BUKAN: /full/path/to/uploads/videos/filename.mp4
+                Path di database harus: uploads/videos/filename.mp4
             </pre>
         </div>
     </div>

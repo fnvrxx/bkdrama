@@ -15,8 +15,14 @@ if ($drama_id <= 0) {
     exit();
 }
 
-// Get drama details
-$drama_query = "SELECT * FROM drama WHERE id = ?";
+// Get drama details dengan ratings dari user
+$drama_query = "SELECT d.*,
+                COALESCE(AVG(r.rating), 0) as avg_rating,
+                COUNT(DISTINCT r.id) as total_ratings
+                FROM drama d
+                LEFT JOIN ratings r ON d.id = r.drama_id
+                WHERE d.id = ?
+                GROUP BY d.id";
 $drama_stmt = $db->prepare($drama_query);
 $drama_stmt->execute([$drama_id]);
 $drama = $drama_stmt->fetch();
@@ -239,7 +245,7 @@ $episodes = $episodes_stmt->fetchAll();
         <div class="page-header">
             <h2>📺 Episode: <?php echo htmlspecialchars($drama['title']); ?></h2>
             <a href="add-episode.php?drama_id=<?php echo $drama_id; ?>" class="btn btn-primary">
-                ➕ Tambah Episode
+                Tambah Episode
             </a>
         </div>
 
@@ -267,7 +273,8 @@ $episodes = $episodes_stmt->fetchAll();
             <div class="drama-meta">
                 <span>Genre: <?php echo htmlspecialchars($drama['genre']); ?></span> |
                 <span>Rilis: <?php echo $drama['rilis_tahun']; ?></span> |
-                <span>rating: <?php echo $drama['rating']; ?></span> |
+                <span>⭐ Rating: <?php echo number_format($drama['avg_rating'], 1); ?>
+                    (<?php echo $drama['total_ratings']; ?> user)</span> |
                 <span>Episode: <?php echo count($episodes); ?> Episode</span>
             </div>
         </div>
@@ -279,8 +286,6 @@ $episodes = $episodes_stmt->fetchAll();
                         <tr>
                             <th>Eps #</th>
                             <th>Judul Episode</th>
-                            <th>Durasi</th>
-                            <th>Video URL</th>
                             <th>Dibuat</th>
                             <th>Aksi</th>
                         </tr>
@@ -290,20 +295,18 @@ $episodes = $episodes_stmt->fetchAll();
                             <tr>
                                 <td><strong><?php echo $episode['eps_number']; ?></strong></td>
                                 <td><?php echo htmlspecialchars($episode['eps_title']); ?></td>
-                                <td>⏱️ <?php echo $episode['durasi']; ?> menit</td>
-                                <td style="font-size: 12px; color: #666;">
-                                    <?php echo htmlspecialchars(substr($episode['link_video'], 0, 30)); ?>...
-                                </td>
                                 <td><?php echo date('d M Y', strtotime($episode['created_at'])); ?></td>
                                 <td>
                                     <div class="actions">
-                                        <a href="../watch.php?episode=<?php echo $episode['id']; ?>" class="btn btn-success"
+                                        <a href="../watch-episode.php?id=<?php echo $episode['id']; ?>" class="btn btn-success"
                                             target="_blank">Preview</a>
                                         <a href="edit-episode.php?id=<?php echo $episode['id']; ?>"
                                             class="btn btn-warning">Edit</a>
                                         <button
-                                            onclick="confirmDelete(<?php echo $episode['id']; ?>, <?php echo $episode['eps_number']; ?>)"
-                                            class="btn btn-danger">Delete</button>
+                                            onclick="confirmDelete(<?php echo $episode['id']; ?>, <?php echo $episode['eps_number']; ?>, '<?php echo htmlspecialchars(addslashes($episode['eps_title'])); ?>')"
+                                            class="btn btn-danger" title="Hapus episode">
+                                            🗑️ Delete
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -323,11 +326,67 @@ $episodes = $episodes_stmt->fetchAll();
     </div>
 
     <script>
-        function confirmDelete(id, episodeNum) {
-            if (confirm(`Hapus Episode ${episodeNum}?\n\nData episode akan dihapus permanen!`)) {
-                window.location.href = `delete-episode.php?id=${id}&drama_id=<?php echo $drama_id; ?>`;
+        /**
+               * Confirm and delete episode
+               */
+        function confirmDelete(episodeId, episodeNum, episodeTitle) {
+            console.log('Delete requested for:', { episodeId, episodeNum, episodeTitle });
+
+            // Validate ID
+            if (!episodeId || episodeId <= 0) {
+                alert('Error: Invalid episode ID');
+                return;
+            }
+
+            // Confirm deletion
+            const confirmMsg = `Hapus Episode ${episodeNum}?\n\n` +
+                `Judul: ${episodeTitle}\n\n` +
+                `PERINGATAN:\n` +
+                `• Data episode akan dihapus permanen\n` +
+                `• File video akan dihapus dari server\n` +
+                `• Watch history pengguna akan dihapus\n` +
+                `• Tindakan ini TIDAK DAPAT dibatalkan!\n\n` +
+                `Lanjutkan?`;
+
+            if (confirm(confirmMsg)) {
+                console.log('User confirmed deletion');
+
+                // Disable all buttons to prevent double-click
+                const allButtons = document.querySelectorAll('button');
+                allButtons.forEach(btn => {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.6';
+                });
+
+                // Show loading message
+                const button = event.target;
+                const originalText = button.innerHTML;
+                button.innerHTML = '⏳ Menghapus...';
+
+                // Redirect to delete handler
+                console.log('Redirecting to delete-episode.php?id=' + episodeId);
+                window.location.href = 'delete-episode.php?id=' + episodeId;
+            } else {
+                console.log('User cancelled deletion');
             }
         }
+
+        // Show alert on page load if there's a message
+        window.addEventListener('DOMContentLoaded', function () {
+            const urlParams = new URLSearchParams(window.location.search);
+
+            // Auto-hide success messages after 5 seconds
+            if (urlParams.get('success')) {
+                setTimeout(function () {
+                    const alert = document.querySelector('.alert-success');
+                    if (alert) {
+                        alert.style.transition = 'opacity 0.5s';
+                        alert.style.opacity = '0';
+                        setTimeout(() => alert.remove(), 500);
+                    }
+                }, 5000);
+            }
+        });
     </script>
 </body>
 
